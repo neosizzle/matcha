@@ -9,8 +9,8 @@ services:
     environment:
       - NEO4J_AUTH=${NEO4J_USERNAME}/${NEO4J_PASSWORD}  # Use values from the .env file
     ports:
-      - 7474:7474   # HTTP port
-      - 7687:7687   # Bolt port
+      - 7474:7474   # HTTP port for UI
+      - 7687:7687   # Bolt port for query
     volumes:
       - neo4j-data:/data   # Persist database data
       - neo4j-logs:/logs   # Persist Neo4j logs
