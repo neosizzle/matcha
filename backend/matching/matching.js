@@ -6,6 +6,10 @@ app.get('/', (req, res) => {
   res.send('Matching service')
 })
 
+app.get('/ping', (req, res) => {
+    res.send("pong")
+})
+
 app.listen(port, () => {
   console.log(`Matching service listening on port ${port}`)
 })
