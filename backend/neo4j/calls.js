@@ -13,7 +13,3 @@ exports.get_num_nodes = async function () {
     console.log("RESULT", (!num_nodes ? 0 : num_nodes.records.length));
     return (!num_nodes ? 0 : num_nodes.records.length);
 };
-
-exports.ping = async () => {
-    return "pong"
-}
