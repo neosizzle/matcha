@@ -50,8 +50,8 @@ router.post('/register', async function(req, res, next) {
 	if (isNaN(bd_day.getTime()))
 		return res.status(400).send({'detail': `birthday is invalid`})
 
-	if (bd_day > bd_requirement)
-		return res.status(400).send({'detail': `Go do homework and drink milk`})
+	if (bd_day < bd_requirement)
+		return res.status(400).send({'detail': `Too old, this platform is made for minors only`})
 
 	const salt = bcrypt.genSaltSync(10);
 	const new_user = {
