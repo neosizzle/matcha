@@ -6,4 +6,6 @@ exports.Sexuality = Object.freeze({
   
 exports.DbErrors = Object.freeze({
 	EXISTS: 'DbErrors.exists',
+	NOTFOUND: 'DbErrors.notfound',
+	UNAUTHORIZED: 'DbErrors.unauthorized',
 });

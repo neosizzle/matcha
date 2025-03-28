@@ -2,6 +2,7 @@ var debug = require('debug')('backend:neo4j');
 let neo4j = require('neo4j-driver');
 let driver = neo4j.driver("bolt://0.0.0.0:7687", neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD));
 const enums = require("../constants/enums")
+const bcrypt = require("bcryptjs");
 
 // Database init code
 const init_fn = async () => {
@@ -61,7 +62,6 @@ exports.create_new_user = async function ({
     fame_rating
 }) {
     let session = driver.session();
-    // TODO check user with email exists
     const existing_email = await session.run('MATCH (u:User) WHERE u.email = $email RETURN u', { email })
     if (existing_email.records.length != 0)
         throw new Error(enums.DbErrors.EXISTS);
@@ -99,5 +99,24 @@ exports.create_new_user = async function ({
     };
     await session.run(query, params);
 }
+
+exports.auth_email_pw = async function ({
+    email,
+    password
+}) {
+    let session = driver.session();
+    const query_record = await session.run('MATCH (u:User) WHERE u.email = $email RETURN u as data', { email })
+    if (query_record.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+    const user = query_record.records[0].get('data').properties
+    const hash = user['password']
+
+    if (!bcrypt.compareSync(password, hash))
+        throw new Error(enums.DbErrors.UNAUTHORIZED)
+    
+    delete user['password']
+    return user
+}
+
 // TODO ...
 // USER module end

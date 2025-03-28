@@ -7,9 +7,44 @@ var debug = require('debug')('backend:router:auth');
 
 var router = express.Router();
 
+const ACCEPTED_LOGIN_METHODS = ['email', "42"]
+
 router.post('/login', async function(req, res, next) {
-	// TODO code here...
-	res.send('OK');
+	const body = req.body
+	const method = body['method']
+
+	if (!method)
+		return res.status(400).send({'detail': `method field is required`})
+	if (!ACCEPTED_LOGIN_METHODS.includes(method))
+		return res.status(400).send({'detail': `Accepted methods are ${ACCEPTED_LOGIN_METHODS}`})
+
+	if (method == ACCEPTED_LOGIN_METHODS[0]) // email
+	{
+		const required_fields = ["email", "password"]
+		if (!required_fields.every(key => key in body))
+			return res.status(400).send({'detail': `fields ${required_fields} are required`})
+
+		const email = body['email']
+		const password = body['password']
+
+		try {
+			// query db for email and password
+			const user = await neo4j_calls.auth_email_pw({email, password})
+
+			// TODO: create new session
+
+			return res.status(200).send({'data': {'user': user}});
+		} catch (error) {
+			if (error.message == enums.DbErrors.NOTFOUND)
+				return res.status(404).send({'detail': "Email not found"})
+			if (error.message == enums.DbErrors.UNAUTHORIZED)
+				return res.status(403).send({'detail': "Credentials invalid"})
+			debug(error)
+			return res.status(500).send({'detail' : "Internal server error"});
+		}
+		
+	}
+	res.status(501).send({'detail': "Not implemented"});
 });
 
 router.post('/logout', async function(req, res, next) {
@@ -21,6 +56,12 @@ router.post('/verify_email', async function(req, res, next) {
 	// TODO code here...
 	res.send('OK');
 });
+
+router.post('/request_verify_email', async function(req, res, next) {
+	// TODO code here...
+	res.send('OK');
+});
+
 
 router.post('/register', async function(req, res, next) {
 	const required_fields = ["email", "password", "displayname", "birthday"]
@@ -73,10 +114,10 @@ router.post('/register', async function(req, res, next) {
 		await neo4j_calls.create_new_user(new_user);
 		res.send({'data': new_user})
 	} catch (error) {
-		debug(error)
 		if (error.message == enums.DbErrors.EXISTS)
 			return res.status(400).send({'detail': "Email already taken"})
-		res.status(500).send({'detail' : "Internal server error"});
+		debug(error)
+		return res.status(500).send({'detail' : "Internal server error"});
 	}
 
 });
