@@ -1,3 +1,5 @@
+const { Neo4jError } = require("neo4j-driver");
+
 exports.Sexuality = Object.freeze({
 	HOMOSEXUAL: 'straight',
 	HETROSEXUAL: 'gay',
