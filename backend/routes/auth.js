@@ -1,4 +1,6 @@
 const neo4j_calls = require("../neo4j/calls")
+const auth_check_mdw = require("../middleware/authcheck")
+
 const enums = require("../constants/enums")
 const { v4: uuidv4 } = require('uuid');
 const express = require('express');
@@ -8,8 +10,8 @@ var debug = require('debug')('backend:router:auth');
 var router = express.Router();
 
 const ACCEPTED_LOGIN_METHODS = ['email', "42"]
-
-router.post('/login', async function(req, res, next) {
+const COOKIE_AGE_MILLISECONDS = 12 * 60 * 60 * 1000
+router.post('/login', async function(req, res) {
 	const body = req.body
 	const method = body['method']
 
@@ -31,9 +33,9 @@ router.post('/login', async function(req, res, next) {
 			// query db for email and password
 			const user = await neo4j_calls.auth_email_pw({email, password})
 
-			// TODO: create new session
-
-			return res.status(200).send({'data': {'user': user}});
+			const session = await neo4j_calls.create_session_with_user({user_id: user.id})
+			res.cookie('token', session['hash'], {httpOnly: true, maxAge: COOKIE_AGE_MILLISECONDS})
+			return res.status(200).send({'data': {'user': user, 'token': session['hash']}});
 		} catch (error) {
 			if (error.message == enums.DbErrors.NOTFOUND)
 				return res.status(404).send({'detail': "Email not found"})
@@ -47,23 +49,23 @@ router.post('/login', async function(req, res, next) {
 	res.status(501).send({'detail': "Not implemented"});
 });
 
-router.post('/logout', async function(req, res, next) {
+router.post('/logout', [auth_check_mdw.checkJWT], async function(req, res) {
 	// TODO code here...
 	res.send('OK');
 });
 
-router.post('/verify_email', async function(req, res, next) {
+router.post('/verify_email', async function(req, res) {
 	// TODO code here...
 	res.send('OK');
 });
 
-router.post('/request_verify_email', async function(req, res, next) {
+router.post('/request_verify_email', async function(req, res) {
 	// TODO code here...
 	res.send('OK');
 });
 
 
-router.post('/register', async function(req, res, next) {
+router.post('/register', async function(req, res) {
 	const required_fields = ["email", "password", "displayname", "birthday"]
 	const body = req.body
 	
