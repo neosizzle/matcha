@@ -5,12 +5,24 @@ const enums = require("../constants/enums")
 const { v4: uuidv4 } = require('uuid');
 const express = require('express');
 const bcrypt = require("bcryptjs");
+const nodemailer = require('nodemailer')
 var debug = require('debug')('backend:router:auth');
+
 
 var router = express.Router();
 
 const ACCEPTED_LOGIN_METHODS = ['email', "42"]
 const COOKIE_AGE_MILLISECONDS = 12 * 60 * 60 * 1000
+
+const EMAIL_TRANSPORTER = nodemailer.createTransport({
+    host: 'smtp.ethereal.email',
+    port: 587,
+    auth: {
+        user: process.env.ETHEREAL_EMAIL,
+        pass: process.env.ETHEREAL_PW
+    }
+});
+
 router.post('/login', async function(req, res) {
 	const body = req.body
 	const method = body['method']
@@ -30,9 +42,7 @@ router.post('/login', async function(req, res) {
 		const password = body['password']
 
 		try {
-			// query db for email and password
 			const user = await neo4j_calls.auth_email_pw({email, password})
-
 			const session = await neo4j_calls.create_session_with_user({user_id: user.id})
 			res.cookie('token', session['hash'], {httpOnly: true, maxAge: COOKIE_AGE_MILLISECONDS})
 			return res.status(200).send({'data': {'user': user, 'token': session['hash']}});
@@ -50,18 +60,90 @@ router.post('/login', async function(req, res) {
 });
 
 router.post('/logout', [auth_check_mdw.checkJWT], async function(req, res) {
-	// TODO code here...
-	res.send('OK');
+	try {
+		await neo4j_calls.delete_session_from_user({user_id: req.user.id})
+		return res.status(200).send({'data': {}})
+	} catch (error) {
+		if (error.message == enums.DbErrors.NOTFOUND)
+			return res.status(404).send({'detail': "Not found"})
+		debug(error)
+		return res.status(500).send({'detail' : "Internal server error"});
+	}
 });
 
-router.post('/verify_email', async function(req, res) {
-	// TODO code here...
-	res.send('OK');
+router.post('/verify_email',  [auth_check_mdw.checkJWT], async function(req, res) {
+	const required_fields = ["otp"]
+	const body = req.body
+	const user = req.user
+
+	if (!required_fields.every(key => key in body))
+		return res.status(400).send({'detail': `required fields are ${required_fields}`})
+	
+	if (user.verified)
+		return res.status(400).send({'detail': `User already verified`})
+	
+	const { otp } = body
+
+	try {
+		await neo4j_calls.verify_email({ user, otp })
+		return res.status(200).send({"data": {}})
+	} catch (error) {
+		if (error.message == enums.DbErrors.EXPIRED)
+			return res.status(400).send({'detail': 'Request expired'})
+		if (error.message == enums.DbErrors.NOTFOUND)
+			return res.status(404).send({'detail': 'Not found'})
+		if (error.message == enums.DbErrors.UNAUTHORIZED)
+			return res.status(403).send({'detail': 'Invalid OTP'})
+		debug(error)
+		return res.status(500).send({'detail' : "Internal server error"});
+	}
 });
 
-router.post('/request_verify_email', async function(req, res) {
-	// TODO code here...
-	res.send('OK');
+router.post('/request_verify_email', [auth_check_mdw.checkJWT], async function(req, res) {
+	const recepient_email = req.user.email
+	
+	if (req.user.verified)
+		return res.status(400).send({'detail': `User already verified`})
+
+	if (!recepient_email)
+		return res.status(400).send({'detail': 'Oauth accounts does not need email verification'})
+	try {
+		const otp = await neo4j_calls.create_email_verify({user: req.user})
+		const mail_params = {
+			from: process.env.ETHEREAL_EMAIL,
+			to: recepient_email,
+			subject: 'Verication email',
+			html: `
+				<html>
+				<head>
+					<style>
+					h1 {
+						color: #4CAF50;
+					}
+					p {
+						font-size: 16px;
+					}
+					</style>
+				</head>
+				<body>
+					<h1>Email verification for Matcha</h1>
+					<p>Please enter the verification code below to complete your verification. If you did not request this verification, please feel free to safely ignore this email.</p>
+					<h2>${otp}</h2>
+
+				</body>
+				</html>
+			` 
+		};
+		const info = await EMAIL_TRANSPORTER.sendMail(mail_params);
+		if (!info.accepted)
+			return res.status(500).send({'detail': "Nodemailer error"});
+		return res.status(200).send({'data': {}});
+	} catch (error) {
+		if (error.message == enums.DbErrors.RATE_LIMIT)
+			return res.status(429).send({'detail': 'Too many requests'})
+		debug(error)
+		return res.status(500).send({'detail' : "Internal server error"});
+	}
 });
 
 
@@ -114,7 +196,9 @@ router.post('/register', async function(req, res) {
 
 	try {
 		await neo4j_calls.create_new_user(new_user);
-		res.send({'data': new_user})
+		const session = await neo4j_calls.create_session_with_user({user_id: new_user.id})
+		res.cookie('token', session['hash'], {httpOnly: true, maxAge: COOKIE_AGE_MILLISECONDS})
+		res.send({'data': {'user': new_user, 'token': session['hash']}})
 	} catch (error) {
 		if (error.message == enums.DbErrors.EXISTS)
 			return res.status(400).send({'detail': "Email already taken"})
@@ -122,6 +206,14 @@ router.post('/register', async function(req, res) {
 		return res.status(500).send({'detail' : "Internal server error"});
 	}
 
+});
+
+router.post('/request_pw_reset', async function(req, res) {
+	return res.status(501).send("KO")
+});
+
+router.post('/verify_pw_reset', async function(req, res) {
+	return res.status(501).send("KO")
 });
 
 module.exports = router; 

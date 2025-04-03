@@ -10,5 +10,6 @@ exports.DbErrors = Object.freeze({
 	NOTFOUND: 'DbErrors.notfound',
 	UNAUTHORIZED: 'DbErrors.unauthorized',
 	EXPIRED: 'DbErrors.expired',
+	RATE_LIMIT: 'DbErrors.ratelimit',
 
 });
