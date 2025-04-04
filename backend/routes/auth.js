@@ -5,7 +5,8 @@ const enums = require("../constants/enums")
 const { v4: uuidv4 } = require('uuid');
 const express = require('express');
 const bcrypt = require("bcryptjs");
-const nodemailer = require('nodemailer')
+const nodemailer = require('nodemailer');
+const { EMAIL_REGEX, PASSWORD_REGEX, DATE_REGEX } = require("../constants/regex");
 var debug = require('debug')('backend:router:auth');
 
 
@@ -156,17 +157,17 @@ router.post('/register', async function(req, res) {
 	
 	const { email, password, displayname, birthday } = body
 
-	const email_regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-	const password_regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/;
-	const date_regex = /^\d{4}-\d{2}-\d{2}$/;
+	// const email_regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+	// const password_regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/;
+	// const date_regex = /^\d{4}-\d{2}-\d{2}$/;
 
-	if (!email_regex.test(email))
+	if (!EMAIL_REGEX.test(email))
 		return res.status(400).send({'detail': `email is invalid`})
 
-	if (!password_regex.test(password))
+	if (!PASSWORD_REGEX.test(password))
 		return res.status(400).send({'detail': `password should have more than 7 characters, at least 1 uppercase, 1 lowercase, 1 number and 1 special character`})
 
-	if (!date_regex.test(birthday))
+	if (!DATE_REGEX.test(birthday))
 		return res.status(400).send({'detail': `birthday is invalid, format YYYY-MM-DD is required`})
 
 	const bd_day = new Date(birthday);
@@ -209,11 +210,84 @@ router.post('/register', async function(req, res) {
 });
 
 router.post('/request_pw_reset', async function(req, res) {
-	return res.status(501).send("KO")
+	const required_fields = ["email"]
+	const body = req.body
+
+	if (!required_fields.every(key => key in body))
+		return res.status(400).send({'detail': `required fields are ${required_fields}`})
+	
+	const { email } = body
+
+	try {
+		const otp = await neo4j_calls.create_pw_reset({ email })
+		const mail_params = {
+			from: process.env.ETHEREAL_EMAIL,
+			to: email,
+			subject: 'Password reset email',
+			html: `
+				<html>
+				<head>
+					<style>
+					h1 {
+						color:rgb(175, 76, 76);
+					}
+					p {
+						font-size: 16px;
+					}
+					</style>
+				</head>
+				<body>
+					<h1>Password reset for Matcha</h1>
+					<p>Please enter the verification code below to complete your reset. If you did not request this reset, please feel free to safely ignore this email.</p>
+					<h2>${otp}</h2>
+
+				</body>
+				</html>
+			` 
+		};
+		const info = await EMAIL_TRANSPORTER.sendMail(mail_params);
+		if (!info.accepted)
+			return res.status(500).send({'detail': "Nodemailer error"});
+		return res.status(200).send({'data': {}});
+	} catch (error) {
+		if (error.message == enums.DbErrors.NOTFOUND)
+			return res.status(404).send({'detail': "Not found"})
+		if (error.message == enums.DbErrors.RATE_LIMIT)
+			return res.status(429).send({'detail': 'Too many requests'})
+		debug(error)
+		return res.status(500).send({'detail': "Internal server error"})
+	}
 });
 
 router.post('/verify_pw_reset', async function(req, res) {
-	return res.status(501).send("KO")
+	const required_fields = ["otp", "new_pw", "email"]
+	const body = req.body
+
+	if (!required_fields.every(key => key in body))
+		return res.status(400).send({'detail': `required fields are ${required_fields}`})
+	
+	const { otp, new_pw, email } = body
+
+	if (!PASSWORD_REGEX.test(new_pw))
+		return res.status(400).send({'detail': `password should have more than 7 characters, at least 1 uppercase, 1 lowercase, 1 number and 1 special character`})
+
+	const salt = bcrypt.genSaltSync(10);
+	const hashed_pw = bcrypt.hashSync(new_pw, salt);
+
+	try {
+		await neo4j_calls.verify_pw_reset({ new_pw: hashed_pw, otp, email})
+		return res.status(200).send({"data": {}})
+	} catch (error) {
+		if (error.message == enums.DbErrors.EXPIRED)
+			return res.status(400).send({'detail': 'Request expired'})
+		if (error.message == enums.DbErrors.NOTFOUND)
+			return res.status(404).send({'detail': 'Not found'})
+		if (error.message == enums.DbErrors.UNAUTHORIZED)
+			return res.status(403).send({'detail': 'Invalid OTP'})
+		debug(error)
+		return res.status(500).send({'detail' : "Internal server error"});
+	}
+
 });
 
 module.exports = router; 
