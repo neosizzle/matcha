@@ -4,6 +4,7 @@ let driver = neo4j.driver("bolt://0.0.0.0:7687", neo4j.auth.basic(process.env.NE
 const enums = require("../constants/enums")
 const bcrypt = require("bcryptjs");
 const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
 
 // Database init code
 const init_fn = async () => {
@@ -66,6 +67,61 @@ exports.auth_email_pw = async function ({
     
     delete user['password']
     return user
+}
+
+exports.get_or_create_user_42 = async function ({
+    user_iden,
+    birthday
+}) {
+    let session = driver.session();
+    const query_record = await session.run('MATCH (u:User) WHERE u.iden_42 = $user_iden RETURN u as data', { user_iden })
+    
+    // TODO: no users, create new user
+    if (query_record.records.length == 0)
+    {
+        const query = `
+        CREATE (u:User {
+            id: $id,
+            images: $images,
+            email: $email,
+            password: $password,
+            iden_42: $iden_42,
+            verified: $verified,
+            sexuality: $sexuality,
+            displayname: $displayname,
+            birthday: $birthday,
+            bio: $bio,
+            enable_auto_location: $enable_auto_location,
+            fame_rating: $fame_rating
+            })
+        RETURN u as data;
+        `;
+        const params = {
+            id: uuidv4(),
+            images: [],
+            email: "",
+            password: "",
+            iden_42: user_iden,
+            verified: true,
+            sexuality: enums.Sexuality.BISEXUAL,
+            displayname :`user${Math.floor(new Date().getTime() / 1000)}`,
+            birthday,
+            bio: "",
+            enable_auto_location: true,
+            fame_rating: 0
+        };
+        let newuser_query_record = await session.run(query, params);
+        const user = newuser_query_record.records[0].get('data').properties
+        return user
+    }
+    // got user, return user
+    else 
+    {
+        const user = query_record.records[0].get('data').properties
+        delete user['password']
+        return user
+    }
+    
 }
 
 exports.delete_session_from_user = async function ({

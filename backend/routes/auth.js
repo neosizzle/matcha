@@ -14,6 +14,8 @@ var router = express.Router();
 
 const ACCEPTED_LOGIN_METHODS = ['email', "42"]
 const COOKIE_AGE_MILLISECONDS = 12 * 60 * 60 * 1000
+const INTRA_42_TOKEN_URL = 'https://api.intra.42.fr/oauth/token'
+const INTRA_42_IDEN_URL = 'https://api.intra.42.fr/v2/me'
 
 const EMAIL_TRANSPORTER = nodemailer.createTransport({
     host: 'smtp.ethereal.email',
@@ -57,7 +59,58 @@ router.post('/login', async function(req, res) {
 		}
 		
 	}
-	res.status(501).send({'detail': "Not implemented"});
+	if (method == ACCEPTED_LOGIN_METHODS[1]) // 42 API
+	{
+		const required_fields = ["code", "state", "redirect_uri"]
+		if (!required_fields.every(key => key in body))
+			return res.status(400).send({'detail': `fields ${required_fields} are required`})
+
+		const code = body['code']
+		const state = body['state']
+		const redirect_uri = body['redirect_uri']
+
+		// send request to 42 oauth to obtain token
+		let data = {
+			'client_id': process.env.CLIENT_ID_42,
+			'client_secret': process.env.CLIENT_SECRET_42,
+			'grant_type': 'authorization_code',
+			'code': code,
+			'redirect_uri': redirect_uri
+		}
+		let headers = {
+			'Content-Type': "application/x-www-form-urlencoded",
+			'Accept': 'application/json'
+		}
+
+		// TODO; try catch here if we fail?
+		let response = await fetch(INTRA_42_TOKEN_URL, {'method': 'POST', 'body': data, 'headers': headers});
+		let response_body = await response.json()
+
+		const oauth_token = response_body['access_token']
+		headers = {
+			'Authorization': `Bearer ${oauth_token}`
+		}
+
+		// use token to get oauth identity
+		response = await fetch(INTRA_42_IDEN_URL, {'method': 'GET', 'headers': headers});
+		response_body = await response.json()
+
+		// TODO: check birthday
+		const user_bd = response_body['cursus_users']
+
+		// TODO; try catch here if we fail?
+		const user_iden = response_body['login']
+
+		try {
+			const user = await neo4j_calls.get_or_create_user_42({user_iden, birthday: user_bd})
+			const session = await neo4j_calls.create_session_with_user({user_id: user.id})
+			res.cookie('token', session['hash'], {httpOnly: true, maxAge: COOKIE_AGE_MILLISECONDS})
+			return res.status(200).send({'data': {'user': user, 'token': session['hash']}});
+		} catch (error) {
+			debug(error)
+			return res.status(500).send({'detail' : "Internal server error"});
+		}
+	}
 });
 
 router.post('/logout', [auth_check_mdw.checkJWT], async function(req, res) {
