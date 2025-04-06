@@ -8,12 +8,15 @@ const bcrypt = require("bcryptjs");
 const nodemailer = require('nodemailer');
 const { EMAIL_REGEX, PASSWORD_REGEX, DATE_REGEX } = require("../constants/regex");
 var debug = require('debug')('backend:router:auth');
+const crypto = require('crypto');
+const querystring = require('querystring');
 
 
 var router = express.Router();
 
 const ACCEPTED_LOGIN_METHODS = ['email', "42"]
 const COOKIE_AGE_MILLISECONDS = 12 * 60 * 60 * 1000
+const INTRA_42_AUTH_URL = "https://api.intra.42.fr/oauth/authorize"
 const INTRA_42_TOKEN_URL = 'https://api.intra.42.fr/oauth/token'
 const INTRA_42_IDEN_URL = 'https://api.intra.42.fr/v2/me'
 
@@ -25,6 +28,18 @@ const EMAIL_TRANSPORTER = nodemailer.createTransport({
         pass: process.env.ETHEREAL_PW
     }
 });
+
+router.get('/oauth42', async function(req, res) {
+	const params = {
+		scope: 'public',
+		state: `42_${ crypto.createHash('sha256').update('i am inside ur walls').digest('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`,
+		client_id: process.env.CLIENT_ID_42,
+		response_type: 'code',
+		redirect_uri: process.env.OAUTH_REDIR_URL
+	}
+    const params_encoded = querystring.stringify(params);
+    return res.redirect(`${INTRA_42_AUTH_URL}?${params_encoded}`);
+})
 
 router.post('/login', async function(req, res) {
 	const body = req.body
@@ -61,33 +76,31 @@ router.post('/login', async function(req, res) {
 	}
 	if (method == ACCEPTED_LOGIN_METHODS[1]) // 42 API
 	{
-		const required_fields = ["code", "state", "redirect_uri"]
+		const required_fields = ["code", "state"]
 		if (!required_fields.every(key => key in body))
 			return res.status(400).send({'detail': `fields ${required_fields} are required`})
 
 		const code = body['code']
 		const state = body['state']
-		const redirect_uri = body['redirect_uri']
 
 		// send request to 42 oauth to obtain token
-		let data = {
+		let params = {
 			'client_id': process.env.CLIENT_ID_42,
 			'client_secret': process.env.CLIENT_SECRET_42,
 			'grant_type': 'authorization_code',
 			'code': code,
-			'redirect_uri': redirect_uri
-		}
-		let headers = {
-			'Content-Type': "application/x-www-form-urlencoded",
-			'Accept': 'application/json'
+			'state': state,
+			'redirect_uri': process.env.OAUTH_REDIR_URL
 		}
 
-		// TODO; try catch here if we fail?
-		let response = await fetch(INTRA_42_TOKEN_URL, {'method': 'POST', 'body': data, 'headers': headers});
+		const params_encoded = querystring.stringify(params)
+		let response = await fetch(`${INTRA_42_TOKEN_URL}?${params_encoded}`, {'method': 'POST'});
 		let response_body = await response.json()
+		if (response.status != 200)
+			return res.status(403).send({'detail' : "Unauthorized"});
 
 		const oauth_token = response_body['access_token']
-		headers = {
+		let headers = {
 			'Authorization': `Bearer ${oauth_token}`
 		}
 
@@ -95,13 +108,20 @@ router.post('/login', async function(req, res) {
 		response = await fetch(INTRA_42_IDEN_URL, {'method': 'GET', 'headers': headers});
 		response_body = await response.json()
 
-		// TODO: check birthday
-		const user_bd = response_body['cursus_users']
+		if (response.status != 200)
+			return res.status(403).send({'detail' : "Unauthorized"});
 
-		// TODO; try catch here if we fail?
+		const user_bd_string = response_body['cursus_users'][0]['begin_at']
+		const user_bd = new Date(user_bd_string).toISOString().split('T')[0];
+		const today = new Date()
 		const user_iden = response_body['login']
+		const bd_requirement = today.setFullYear(today.getFullYear() - 18);
+
+		if (user_bd < bd_requirement)
+			return res.status(400).send({'detail': `Too old, this platform is made for minors only`})
 
 		try {
+			console.log(user_iden)
 			const user = await neo4j_calls.get_or_create_user_42({user_iden, birthday: user_bd})
 			const session = await neo4j_calls.create_session_with_user({user_id: user.id})
 			res.cookie('token', session['hash'], {httpOnly: true, maxAge: COOKIE_AGE_MILLISECONDS})
@@ -209,10 +229,6 @@ router.post('/register', async function(req, res) {
 		return res.status(400).send({'detail': `required fields are ${required_fields}`})
 	
 	const { email, password, displayname, birthday } = body
-
-	// const email_regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-	// const password_regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/;
-	// const date_regex = /^\d{4}-\d{2}-\d{2}$/;
 
 	if (!EMAIL_REGEX.test(email))
 		return res.status(400).send({'detail': `email is invalid`})

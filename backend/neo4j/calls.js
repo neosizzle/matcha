@@ -93,18 +93,18 @@ exports.get_or_create_user_42 = async function ({
             bio: $bio,
             enable_auto_location: $enable_auto_location,
             fame_rating: $fame_rating
-            })
+        })
         RETURN u as data;
         `;
         const params = {
             id: uuidv4(),
-            images: [],
+            images: "",
             email: "",
             password: "",
             iden_42: user_iden,
             verified: true,
             sexuality: enums.Sexuality.BISEXUAL,
-            displayname :`user${Math.floor(new Date().getTime() / 1000)}`,
+            displayname : user_iden,
             birthday,
             bio: "",
             enable_auto_location: true,
