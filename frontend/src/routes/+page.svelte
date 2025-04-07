@@ -1,13 +1,13 @@
 <script>
     import Button from "../components/Button.svelte";
 
-	let url = "http://localhost:3000/auth/oauth42";
+	let oauth_url = "http://localhost:3000/auth/oauth42";
 	let email = ''
 	let password = ''
-	let showPassword = false;
+	let show_password = false;
 	
-	function redirectToUrl() {
-		window.location.href = url;
+	function redirectToOauth() {
+		window.location.href = oauth_url;
 	}
 
 	function handleLogin() {
@@ -17,7 +17,7 @@
 
   // Toggle the visibility of the password
   function togglePasswordVisibility() {
-    showPassword = !showPassword;
+    show_password = !show_password;
   }
 
 </script>
@@ -27,17 +27,17 @@
 		<img src="logo.png" class="w-[100px]" alt="logo"/>
 
 		<!--Login field-->
-		<div>
+		<div class="mb-2">
 			<form on:submit|preventDefault={handleLogin} class="my-6">
 				
 				<input type={'email'} required placeholder="Email" class="border-2 border-gray-300 focus:border-pink-300 focus:outline-none focus:ring-pink-300 rounded py-1.5 mb-3"/>
 
 
 
-				<div class="relative mb-3">
-					<input type={showPassword ? 'text' : 'password'} required placeholder="Password" class="border-2 border-gray-300 focus:border-pink-300 focus:outline-none focus:ring-pink-300 rounded py-1.5"/>
+				<div class="relative mb-6">
+					<input type={show_password ? 'text' : 'password'} required placeholder="Password" class="border-2 border-gray-300 focus:border-pink-300 focus:outline-none focus:ring-pink-300 rounded py-1.5"/>
 
-					{#if showPassword}
+					{#if show_password}
 						<button class="absolute top-[9px] right-[15px] cursor-pointer"  on:click={togglePasswordVisibility} aria-label="show-pw">
 							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5">
 								<path d="M10 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
@@ -53,22 +53,28 @@
 						</button>
 					{/if}
 					
+				</div>
 
+				<div class="text-sm mb-2 px-1">
+					<a class="underline text-blue-400 cursor-pointer" href="/register">Register</a> or <a class="underline text-blue-400 cursor-pointer" href="/reset-pw">Reset password</a>
 				</div>
 				<Button type="submit" customClass="w-[200px]"> Login </Button>
-
 			</form>
 		</div>
 
-		<div>
-			<button on:click={redirectToUrl}>oauth test</button>
-			<h1>COMING SOON: go to /app/home to view app contents</h1>
+		<div class="inline-flex items-center justify-center w-full mb-10">
+			<hr class="w-64 h-[2px] bg-pink-200 border-0 rounded-sm dark:bg-gray-700">
+			<div class="absolute px-4 -translate-x-1/2 bg-white left-1/2 dark:bg-gray-900">
+				<svg xmlns="http://www.w3.org/2000/svg" fill="pink" viewBox="0 0 24 24" stroke-width="1.5" stroke="pink" class="size-6">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+				  </svg>
+			</div>
 		</div>
 
 		<div>
-			<button on:click={redirectToUrl}>oauth test</button>
-			<h1>COMING SOON: go to /app/home to view app contents</h1>
+			<button on:click={redirectToOauth} class="w-[300px] bg-black flex items-center justify-center border-1 border-gray-700 rounded py-3 cursor-pointer text-white"> <span>Continue with</span>  <img src="42-white.png" alt="42" class="pl-2 w-10"/></button>
 		</div>
+		
 	</div>
 </div>
 
