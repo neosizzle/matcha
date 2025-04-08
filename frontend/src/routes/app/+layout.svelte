@@ -5,7 +5,8 @@
 </script>
 
 <div class="relative h-full">
-	<div class="grid grid-cols-4 gap-0 border-b-1 border-gray-200 h-20">
+	<!--NOTE: logout can be in profile page?-->
+	<!-- <div class="grid grid-cols-4 gap-0 border-b-1 border-gray-200 h-20">
 		<div class=" col-span-3">
 			<img
 			src="https://imgs.search.brave.com/pIsbd2G3Tr3v5J48mm1DQSk7EFgZfzAgG51gmCaiZFI/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9saXZl/LWhpbmR1LWFtZXJp/Y2FuLWZvdW5kYXRp/b24ucGFudGhlb25z/aXRlLmlvL3dwLWNv/bnRlbnQvdXBsb2Fk/cy8yMDE5LzExL25h/emktZmxhZy5qcGc"
@@ -17,11 +18,10 @@
 		<a href="/">
 			<div class="flex justify-center items-center h-full col-span-1">
 				<Button>Log out</Button>
-				<!-- <button type="button" class="text-white bg-gradient-to-r from-pink-400 via-pink-500 to-pink-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center">Log out</button> -->
 			</div>
 		</a>
 
-	</div>
+	</div> -->
 	<div class="px-2 py-1">
 		{@render children()}
 	</div>

@@ -5,6 +5,12 @@ exports.Sexuality = Object.freeze({
 	BISEXUAL: 'bi'
   });
   
+exports.GENDER = Object.freeze({
+	MALE: 'm',
+	FEMALE: 'f',
+	NON_BINARY: 'nb'
+});
+
 exports.DbErrors = Object.freeze({
 	EXISTS: 'DbErrors.exists',
 	NOTFOUND: 'DbErrors.notfound',

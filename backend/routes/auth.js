@@ -261,7 +261,8 @@ router.post('/register', async function(req, res) {
 		birthday,
 		bio: "",
 		enable_auto_location: true,
-		fame_rating: 0
+		fame_rating: 0,
+		gender: enums.GENDER.NON_BINARY
 	}
 
 	try {

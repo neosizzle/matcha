@@ -1,11 +1,18 @@
 <script>
     import Button from "../components/Button.svelte";
+	import { toasts } from "../stores/globalStore.svelte";
+    import { ToastType } from "../types/toast";
+    import { showToast } from "../utils/globalFunctions.svelte";
 
 	let oauth_url = "http://localhost:3000/auth/oauth42";
 	let email = ''
 	let password = ''
 	let show_password = false;
 	
+	function triggerToast() {
+		showToast('Your action was successful.', 4000, ToastType.SUCCESS)
+  }
+
 	function redirectToOauth() {
 		window.location.href = oauth_url;
 	}
@@ -73,6 +80,10 @@
 
 		<div>
 			<button on:click={redirectToOauth} class="w-[300px] bg-black flex items-center justify-center border-1 border-gray-700 rounded py-3 cursor-pointer text-white"> <span>Continue with</span>  <img src="42-white.png" alt="42" class="pl-2 w-10"/></button>
+		</div>
+
+		<div>
+			<button on:click={triggerToast}>toast</button>
 		</div>
 		
 	</div>

@@ -92,7 +92,8 @@ exports.get_or_create_user_42 = async function ({
             birthday: $birthday,
             bio: $bio,
             enable_auto_location: $enable_auto_location,
-            fame_rating: $fame_rating
+            fame_rating: $fame_rating,
+            gender: $gender
         })
         RETURN u as data;
         `;
@@ -108,7 +109,8 @@ exports.get_or_create_user_42 = async function ({
             birthday,
             bio: "",
             enable_auto_location: true,
-            fame_rating: 0
+            fame_rating: 0,
+            gender: enums.GENDER.NON_BINARY
         };
         let newuser_query_record = await session.run(query, params);
         const user = newuser_query_record.records[0].get('data').properties
@@ -405,7 +407,8 @@ exports.create_new_user = async function ({
     birthday,
     bio,
     enable_auto_location,
-    fame_rating
+    fame_rating,
+    gender
 }) {
     let session = driver.session();
     const existing_email = await session.run('MATCH (u:User) WHERE u.email = $email RETURN u', { email })
@@ -425,7 +428,8 @@ exports.create_new_user = async function ({
             birthday: $birthday,
             bio: $bio,
             enable_auto_location: $enable_auto_location,
-            fame_rating: $fame_rating
+            fame_rating: $fame_rating,
+            gender: $gender
         })
         RETURN u;
     `;
@@ -441,7 +445,8 @@ exports.create_new_user = async function ({
         birthday,
         bio,
         enable_auto_location,
-        fame_rating
+        fame_rating,
+        gender
     };
     await session.run(query, params);
 }
