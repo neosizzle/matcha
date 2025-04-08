@@ -1,5 +1,6 @@
 @import url('https://fonts.cdnfonts.com/css/handgley');
 @import 'tailwindcss';
+@import "tailwindcss-animated";
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 

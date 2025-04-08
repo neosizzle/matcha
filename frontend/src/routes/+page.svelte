@@ -10,7 +10,7 @@
 	let show_password = false;
 	
 	function triggerToast() {
-		showToast('Your action was successful.', 4000, ToastType.SUCCESS)
+		showToast('Your action was successfsadsaasdasdasdsdsdul.', ToastType.INFO)
   }
 
 	function redirectToOauth() {
