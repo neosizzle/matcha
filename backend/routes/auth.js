@@ -62,7 +62,7 @@ router.post('/login', async function(req, res) {
 		try {
 			const user = await neo4j_calls.auth_email_pw({email, password})
 			const session = await neo4j_calls.create_session_with_user({user_id: user.id})
-			res.cookie('token', session['hash'], {httpOnly: true, maxAge: COOKIE_AGE_MILLISECONDS})
+			res.cookie('token', session['hash'], {sameSite: "strict", httpOnly: true, maxAge: COOKIE_AGE_MILLISECONDS})
 			return res.status(200).send({'data': {'user': user, 'token': session['hash']}});
 		} catch (error) {
 			if (error.message == enums.DbErrors.NOTFOUND)
@@ -124,7 +124,7 @@ router.post('/login', async function(req, res) {
 			console.log(user_iden)
 			const user = await neo4j_calls.get_or_create_user_42({user_iden, birthday: user_bd})
 			const session = await neo4j_calls.create_session_with_user({user_id: user.id})
-			res.cookie('token', session['hash'], {httpOnly: true, maxAge: COOKIE_AGE_MILLISECONDS})
+			res.cookie('token', session['hash'], {sameSite: "strict", httpOnly: true, maxAge: COOKIE_AGE_MILLISECONDS})
 			return res.status(200).send({'data': {'user': user, 'token': session['hash']}});
 		} catch (error) {
 			debug(error)
@@ -268,7 +268,7 @@ router.post('/register', async function(req, res) {
 	try {
 		await neo4j_calls.create_new_user(new_user);
 		const session = await neo4j_calls.create_session_with_user({user_id: new_user.id})
-		res.cookie('token', session['hash'], {httpOnly: true, maxAge: COOKIE_AGE_MILLISECONDS})
+		res.cookie('token', session['hash'], {sameSite: "strict", httpOnly: true, maxAge: COOKIE_AGE_MILLISECONDS})
 		res.send({'data': {'user': new_user, 'token': session['hash']}})
 	} catch (error) {
 		if (error.message == enums.DbErrors.EXISTS)
