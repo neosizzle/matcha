@@ -1,6 +1,7 @@
 var express = require('express');
 var router = express.Router();
 const neo4j_calls = require("../neo4j/calls")
+const auth_check_mdw = require("../middleware/authcheck")
 
 /* GET users listing. */
 router.get('/', async function(req, res, next) {
@@ -8,5 +9,10 @@ router.get('/', async function(req, res, next) {
   console.log("RESULT IS", result)
   res.send('respond with a resource');
 });
+
+router.get('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
+  res.send({'data': req.user});
+});
+
 
 module.exports = router;

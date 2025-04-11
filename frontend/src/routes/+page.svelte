@@ -1,7 +1,10 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     import Button from "../components/Button.svelte";
     import { ToastType } from "../types/toast";
     import { showToast } from "../utils/globalFunctions.svelte";
+	import { user as glob_user } from "../stores/globalStore.svelte"
+    import type { User } from "../types/user";
 
 	let oauth_url = "http://localhost:3000/auth/oauth42";
 	let email = ''
@@ -28,7 +31,6 @@
 				password
 			}),
 		}
-		console.log(payload.body)
 		fetch('http://localhost:3000/auth/login', payload)
 		.then(data => data.json())
 		.then(data => {
@@ -41,7 +43,9 @@
 			}
 			showToast('OK', ToastType.SUCCESS)
 
-			// TODO connect to ws and save in store
+			const user_obj = data['data']['user']
+			const user: User = {...user_obj, birthday: new Date(user_obj['birthday']), images: user_obj['images'].split(",").filter((x: string)=>x!='')}
+			glob_user.update(() => user)
 			window.location.href = "/app/home"
 		})
 		.catch(error => {
@@ -56,8 +60,21 @@
     show_password = !show_password;
   }
 
-  // TODO on mount, check if user is logged in
-
+  onMount(async () => {
+	try {
+		const resp = await fetch('http://localhost:3000/users/me', {credentials: 'include'})
+		if (resp.ok)
+		{
+			const data = await resp.json();
+			const user_obj = data['data']
+			const user: User = {...user_obj, birthday: new Date(user_obj['birthday']), images: user_obj['images'].split(",").filter((x: string)=>x!='')}
+			glob_user.update(() => user)
+			window.location.href = '/app/home'
+		}
+	} catch (error) {
+		return
+	}
+  })
 
 </script>
 
@@ -112,8 +129,8 @@
 		</div>
 
 		<div class="inline-flex items-center justify-center w-full mb-10">
-			<hr class="w-64 h-[2px] bg-pink-200 border-0 rounded-sm dark:bg-gray-700">
-			<div class="absolute px-4 -translate-x-1/2 bg-white left-1/2 dark:bg-gray-900">
+			<hr class="w-64 h-[2px] bg-pink-200 border-0 rounded-sm">
+			<div class="absolute px-4 -translate-x-1/2 bg-white left-1/2">
 				<svg xmlns="http://www.w3.org/2000/svg" fill="pink" viewBox="0 0 24 24" stroke-width="1.5" stroke="pink" class="size-6">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
 				  </svg>
