@@ -28,6 +28,7 @@
 			if (err_msg)
 				window.location.href = "/"
 
+			// TODO set user store here
 			window.location.href = "/app/home"
 		})
 		.catch(error => {

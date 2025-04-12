@@ -13,11 +13,64 @@
 
 <script lang="ts">
     import Button from "../../components/Button.svelte";
-	let login_error = false
+	import { ToastType } from "../../types/toast";
+    import { showToast } from "../../utils/globalFunctions.svelte";
+	import { user as glob_user } from "../../stores/globalStore.svelte"
+    import type { User } from "../../types/user";
+	import { goto } from '$app/navigation'; // if using SvelteKit
+
+	let register_error = false
 	let show_password = false
+	let email = ''
+	let password = ''
+	let password_confirm = ''
+	let display_name = ''
+	let dob = '';
+	let submit_loading = false;
 	
 	function handleRegister() {
-		// TODO..
+		if (password != password_confirm)
+		{
+			register_error = true
+			showToast("Passwords must match", ToastType.ERROR)
+		}
+		const payload = {
+			method: 'POST',
+			credentials: "include" as RequestCredentials,
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				email,
+				password,
+				displayname: display_name,
+				birthday: dob
+			}),
+		}
+
+		submit_loading = true
+		fetch('http://localhost:3000/auth/register', payload)
+		.then(data => data.json())
+		.then(data => {
+			submit_loading = false;
+			const err_msg = data['detail']
+			if (err_msg)
+			{
+				register_error = true
+				return showToast(err_msg, ToastType.ERROR)
+			}
+			showToast('Successfully registered', ToastType.SUCCESS)
+			register_error = false
+
+			const user_obj = data['data']['user']
+			const user: User = {...user_obj, birthday: new Date(user_obj['birthday']), images: user_obj['images'].split(",").filter((x: string)=>x!='')}
+			glob_user.update(() => user)
+			goto("/verify_email")
+		})
+		.catch(error => {
+			submit_loading = false;
+			showToast(error, ToastType.ERROR)
+		})
 	}
 </script>
 
@@ -47,10 +100,11 @@
 					<label class="block text-sm text-gray-500 mb-1" for="dob">Date of Birth</label>
 					<input
 					type="date"
+					bind:value={dob}
 					id="dob"
 					class="
 					w-[100%] border-2 focus:border-pink-300 focus:outline-none focus:ring-pink-300 rounded py-1.5 mb-3
-					{login_error? 'border-red-500' : 'border-gray-300'}
+					{register_error? 'border-red-500' : 'border-gray-300'}
 					"
 					/>
 
@@ -63,10 +117,11 @@
 					  
 					<input
 					type={'text'}
+					bind:value={display_name}
 					required placeholder="Enter your display name"
 					class="
 					w-[100%] border-2 focus:border-pink-300 focus:outline-none focus:ring-pink-300 rounded py-1.5 pl-10
-					{login_error? 'border-red-500' : 'border-gray-300'}
+					{register_error? 'border-red-500' : 'border-gray-300'}
 					"/>
 				</div>
 
@@ -78,10 +133,11 @@
 					  
 					<input
 					type={'email'}
+					bind:value={email}
 					required placeholder="Enter your email"
 					class="
 					w-[100%] border-2 focus:border-pink-300 focus:outline-none focus:ring-pink-300 rounded py-1.5 pl-10
-					{login_error? 'border-red-500' : 'border-gray-300'}
+					{register_error? 'border-red-500' : 'border-gray-300'}
 					"/>
 				</div>
 				
@@ -93,10 +149,11 @@
 					  
 					<input
 					type={show_password ? 'text' : 'password'}
+					bind:value={password}
 					required placeholder="Enter your password"
 					class="
 					w-[100%] border-2 focus:border-pink-300 focus:outline-none focus:ring-pink-300 rounded py-1.5 pl-10
-					{login_error? 'border-red-500' : 'border-gray-300'}
+					{register_error? 'border-red-500' : 'border-gray-300'}
 					"/>
 				</div>
 
@@ -108,10 +165,11 @@
 					  
 					<input
 					type={show_password ? 'text' : 'password'}
+					bind:value={password_confirm}
 					required placeholder="Confirm password"
 					class="
 					w-[100%] border-2 focus:border-pink-300 focus:outline-none focus:ring-pink-300 rounded py-1.5 pl-10
-					{login_error? 'border-red-500' : 'border-gray-300'}
+					{register_error? 'border-red-500' : 'border-gray-300'}
 					"/>
 					
 					<label class="inline-flex space-x-2 mt-1 text-sm text-gray-500">
@@ -135,7 +193,7 @@
 
 					</ul>
 				</div>
-				<Button isLoading={false} type="submit" customClass="w-[200px]" > Register </Button>
+				<Button isLoading={submit_loading} type="submit" customClass="w-[200px]" > Register </Button>
 			</form>
 		</div>
 	</div>

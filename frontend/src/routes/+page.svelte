@@ -5,6 +5,8 @@
     import { showToast } from "../utils/globalFunctions.svelte";
 	import { user as glob_user } from "../stores/globalStore.svelte"
     import type { User } from "../types/user";
+	import { goto } from '$app/navigation';
+
 
 	let oauth_url = "http://localhost:3000/auth/oauth42";
 	let email = ''
@@ -41,12 +43,12 @@
 				login_error = true
 				return showToast(err_msg, ToastType.ERROR)
 			}
-			showToast('OK', ToastType.SUCCESS)
+			showToast('Logged in', ToastType.SUCCESS)
 
 			const user_obj = data['data']['user']
 			const user: User = {...user_obj, birthday: new Date(user_obj['birthday']), images: user_obj['images'].split(",").filter((x: string)=>x!='')}
 			glob_user.update(() => user)
-			window.location.href = "/app/home"
+			goto("/app/home")
 		})
 		.catch(error => {
 			login_loading = false;
@@ -69,7 +71,7 @@
 			const user_obj = data['data']
 			const user: User = {...user_obj, birthday: new Date(user_obj['birthday']), images: user_obj['images'].split(",").filter((x: string)=>x!='')}
 			glob_user.update(() => user)
-			window.location.href = '/app/home'
+			goto('/app/home')
 		}
 	} catch (error) {
 		return
