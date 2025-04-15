@@ -451,5 +451,59 @@ exports.create_new_user = async function ({
     await session.run(query, params);
 }
 
+// writable fields are 
+// images, sexuality, displayname, bio, enable_auto_location and gender
+exports.update_user = async function ({
+    id,
+    images,
+    sexuality,
+    displayname,
+    bio,
+    enable_auto_location,
+    gender
+}) {
+    let session = driver.session();
+    const existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    const existing_user = existing_user_q.records[0].get('u').properties
+     const query = `
+        MATCH (u:User) WHERE u.id  = $id
+        SET u = {
+            id: $id,
+            images: $images,
+            email: $email,
+            password: $password,
+            iden_42: $iden_42,
+            verified: $verified,
+            sexuality: $sexuality, 
+            displayname: $displayname,
+            birthday: $birthday,
+            bio: $bio,
+            enable_auto_location: $enable_auto_location,
+            fame_rating: $fame_rating,
+            gender: $gender
+        }
+        RETURN u;
+    `;
+    const params = {
+        id,
+        images,
+        email: existing_user.email,
+        password: existing_user.password,
+        iden_42: existing_user.iden_42 | "",
+        verified: existing_user.verified,
+        sexuality,
+        displayname,
+        birthday: existing_user.birthday,
+        bio,
+        enable_auto_location,
+        fame_rating:  existing_user.fame_rating,
+        gender
+    };
+    await session.run(query, params);
+}
+
 // TODO ...
 // USER module end
