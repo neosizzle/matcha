@@ -124,7 +124,7 @@
 				</div>
 
 				<div class="text-sm mb-2 px-1">
-					<a class="underline text-blue-400 cursor-pointer" href="/register">Register</a> or <a class="underline text-blue-400 cursor-pointer" href="/reset-pw">Reset password</a>
+					<a class="underline text-blue-400 cursor-pointer" href="/register">Register</a> or <a class="underline text-blue-400 cursor-pointer" href="/pw_reset">Reset password</a>
 				</div>
 				<Button isLoading={login_loading} type="submit" customClass="w-[200px]" > Login </Button>
 			</form>

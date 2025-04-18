@@ -260,6 +260,7 @@ router.post('/register', async function(req, res) {
 		displayname,
 		birthday,
 		bio: "",
+		tags: "",
 		enable_auto_location: true,
 		fame_rating: 0,
 		gender: enums.GENDER.NON_BINARY

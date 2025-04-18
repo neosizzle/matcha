@@ -406,6 +406,7 @@ exports.create_new_user = async function ({
     displayname,
     birthday,
     bio,
+    tags,
     enable_auto_location,
     fame_rating,
     gender
@@ -427,6 +428,7 @@ exports.create_new_user = async function ({
             displayname: $displayname,
             birthday: $birthday,
             bio: $bio,
+            tags: $tags,
             enable_auto_location: $enable_auto_location,
             fame_rating: $fame_rating,
             gender: $gender
@@ -444,6 +446,7 @@ exports.create_new_user = async function ({
         displayname,
         birthday,
         bio,
+        tags,
         enable_auto_location,
         fame_rating,
         gender
@@ -452,7 +455,7 @@ exports.create_new_user = async function ({
 }
 
 // writable fields are 
-// images, sexuality, displayname, bio, enable_auto_location and gender
+// images, sexuality, displayname, bio, enable_auto_location, tags and gender
 exports.update_user = async function ({
     id,
     images,
@@ -460,6 +463,7 @@ exports.update_user = async function ({
     displayname,
     bio,
     enable_auto_location,
+    tags,
     gender
 }) {
     let session = driver.session();
@@ -481,6 +485,7 @@ exports.update_user = async function ({
             displayname: $displayname,
             birthday: $birthday,
             bio: $bio,
+            tags: $tags,
             enable_auto_location: $enable_auto_location,
             fame_rating: $fame_rating,
             gender: $gender
@@ -498,6 +503,7 @@ exports.update_user = async function ({
         displayname,
         birthday: existing_user.birthday,
         bio,
+        tags, // yes, i am aware user may break the serialization here.
         enable_auto_location,
         fame_rating:  existing_user.fame_rating,
         gender

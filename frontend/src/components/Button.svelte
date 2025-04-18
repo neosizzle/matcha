@@ -9,9 +9,5 @@
 	disabled={isLoading}
 	{...$$props}
 >
-{#if isLoading}
-	<span>...</span>
-{:else}
 	<slot></slot>
-{/if}
 </button>

@@ -33,6 +33,7 @@ router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
 
   try {
     const images = body['images']
+    const tags = body['tags']
     const sexuality = body['sexuality']
     const displayname = body['displayname']
     const bio = body['bio']
@@ -40,7 +41,14 @@ router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
     const gender = body['gender']
     const id = req.user.id
 
-    await neo4j_calls.update_user({id: `${id}`, images, sexuality, displayname, bio, enable_auto_location, gender})
+    // Some validation
+    if (displayname == "")
+      return res.status(400).send({"detail": 'display name must not be blank'})
+  
+    if (!Object.values(enums.GENDER).includes(gender))
+      return res.status(400).send({"detail": 'invalid gender'})
+
+    await neo4j_calls.update_user({id: `${id}`, images, sexuality, displayname, bio, tags, enable_auto_location, gender})
 		return res.status(200).send({"data": {}})
   } catch (error) {
       if (error.message == enums.DbErrors.NOTFOUND)
