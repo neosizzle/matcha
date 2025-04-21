@@ -1,10 +1,19 @@
 <script lang="ts">
     import Button from "../../../components/Button.svelte";
 	import { user as glob_user } from "../../../stores/globalStore.svelte"
-	import type { User } from "../../../types/user";
+	import { Gender, type User } from "../../../types/user";
+    import { calculate_age_from_date } from "../../../utils/globalFunctions.svelte";
 
-	let local_user: User | null = null; 
-	glob_user.subscribe(e => local_user = e)
+	let tags_copy: string[] = $state([])
+
+	let local_user: User | null = $state(null); 
+	glob_user.subscribe(e => {
+		if (e)
+		{
+			local_user = e
+			tags_copy = structuredClone(e.tags)
+		}
+	})
 
 
 </script>
@@ -17,13 +26,30 @@
 			<!-- gender, name, age, location display -->
 			<div class="absolute p-4 bottom-0 left-0">
 				<div class="flex items-center">
-					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="pink" class="" viewBox="0 0 16 16">
-						<path fill-rule="evenodd" d="M8 1a4 4 0 1 0 0 8 4 4 0 0 0 0-8M3 5a5 5 0 1 1 5.5 4.975V12h2a.5.5 0 0 1 0 1h-2v2.5a.5.5 0 0 1-1 0V13h-2a.5.5 0 0 1 0-1h2V9.975A5 5 0 0 1 3 5"/>
-					</svg>
-					<span class="pl-[3px] text-lg font-semibold"> Name here, 21</span>
+
+					{#if local_user?.gender == Gender.FEMALE}
+						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="pink" class="" viewBox="0 0 16 16">
+							<path fill-rule="evenodd" d="M8 1a4 4 0 1 0 0 8 4 4 0 0 0 0-8M3 5a5 5 0 1 1 5.5 4.975V12h2a.5.5 0 0 1 0 1h-2v2.5a.5.5 0 0 1-1 0V13h-2a.5.5 0 0 1 0-1h2V9.975A5 5 0 0 1 3 5"/>
+						</svg>
+						{:else if local_user?.gender == Gender.MALE}
+						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="blue" class="bi bi-gender-male" viewBox="0 0 16 16">
+							<path fill-rule="evenodd" d="M9.5 2a.5.5 0 0 1 0-1h5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-1 0V2.707L9.871 6.836a5 5 0 1 1-.707-.707L13.293 2zM6 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8"/>
+						  </svg>
+						{:else}
+						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-gender-ambiguous" viewBox="0 0 16 16">
+							<path fill-rule="evenodd" d="M11.5 1a.5.5 0 0 1 0-1h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V1.707l-3.45 3.45A4 4 0 0 1 8.5 10.97V13H10a.5.5 0 0 1 0 1H8.5v1.5a.5.5 0 0 1-1 0V14H6a.5.5 0 0 1 0-1h1.5v-2.03a4 4 0 1 1 3.471-6.648L14.293 1zm-.997 4.346a3 3 0 1 0-5.006 3.309 3 3 0 0 0 5.006-3.31z"/>
+						</svg>
+					{/if}
+
+					
+					<span class="pl-[3px] text-lg font-semibold"> {local_user?.displayname}, {calculate_age_from_date(local_user?.birthday)}</span>
 				</div>
 				<div class="max-w-48"> 
-					Address, asdsadsa sd sad sa, sadasd 
+					{#if local_user?.enable_auto_location}
+						<div>TODO: use geoloc api if manual location is diabled</div>
+						{:else}
+						<p>Address, asdsadsa sd sad sa, sadasd {local_user?.location_manual}</p> 
+					{/if}
 				</div>
 			</div>
 
@@ -32,14 +58,15 @@
 				<svg xmlns="http://www.w3.org/2000/svg" fill="yellow" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-6">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
 				</svg>
-				2134
+				{local_user?.fame_rating}
 			</div>
 
-			<div class="carousel rounded-box carousel-vertical	w-[90vw] sm:w-[50vw] h-96 sm:h-120 mb-3">
+			<!--Image carousel-->
+			<div class="carousel rounded-box carousel-vertical w-[90vw] sm:w-[50vw] md:w-[50vw] lg:w-[25vw] h-96 sm:h-120 mb-3">
 				<div class="carousel-item h-full w-full bg-cover bg-center bg-[url(https://img.daisyui.com/images/stock/photo-1565098772267-60af42b81ef2.webp)]">
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
-					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="red" class="size-6 ml-auto my-3 mr-3 cursor-pointer" on:click={() => {}}>
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="red" class="size-6 ml-auto my-3 mr-3 cursor-pointer" onclick={() => {}}>
 						<path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
 					</svg>					  
 				</div>
@@ -47,7 +74,7 @@
 				<div class="carousel-item h-full w-full bg-cover bg-center bg-[url(https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp)]">
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
-					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="red" class="size-6 ml-auto my-3 mr-3 cursor-pointer" on:click={() => {}}>
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="red" class="size-6 ml-auto my-3 mr-3 cursor-pointer" onclick={() => {}}>
 						<path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
 					</svg>	
 				</div>
@@ -62,7 +89,7 @@
 					</div>
 				</div>
 
-			  </div>
+			</div>
 		</div>
 
 	</div>
@@ -117,42 +144,17 @@
 
 		  <!-- Tag list-->
 		  <div class="flex flex-wrap">
-			<div class="cursor-pointer badge badge-lg bg-pink-200 m-1">
-				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-[1em]">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5-3.9 19.5m-2.1-19.5-3.9 19.5" />
-				  </svg>
-				Bkb
-			</div>
-			<div class="cursor-pointer badge badge-lg bg-pink-200 m-1">
-				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-[1em]">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5-3.9 19.5m-2.1-19.5-3.9 19.5" />
-				  </svg>
-				Bkb
-			</div>
-			<div class="cursor-pointer badge badge-lg bg-pink-200 m-1">
-				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-[1em]">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5-3.9 19.5m-2.1-19.5-3.9 19.5" />
-				  </svg>
-				Bkbasdsadas
-			</div>
-			<div class="cursor-pointer badge badge-lg bg-pink-200 m-1">
-				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-[1em]">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5-3.9 19.5m-2.1-19.5-3.9 19.5" />
-				  </svg>
-				Bkbsss
-			</div>
-			<div class="cursor-pointer badge badge-lg bg-pink-200 m-1">
-				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-[1em]">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5-3.9 19.5m-2.1-19.5-3.9 19.5" />
-				  </svg>
-				Bkbasdsad
-			</div>
-			<div class="cursor-pointer badge badge-lg bg-pink-200 m-1">
-				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-[1em]">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5-3.9 19.5m-2.1-19.5-3.9 19.5" />
-				  </svg>
-				Bkb
-			</div>
+			{#if local_user}
+				{#each tags_copy as tag}
+					<button class="cursor-pointer badge badge-lg bg-pink-200 m-1" onclick={() => {tags_copy = tags_copy.filter(e => e != tag)}}>
+						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-[1em]">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5-3.9 19.5m-2.1-19.5-3.9 19.5" />
+						</svg>
+						{tag}
+					</button>
+				{/each}
+			{/if}
+		
 		  </div>
 		  <p> Click on a tag to delete it </p>
 		  
@@ -172,6 +174,89 @@
 		</div>
 	</div>
 
+	<!--Recent views and likes-->
+	<div class="px-2">
+
+		<div class="card bg-base-100 card-sm shadow-md mb-3">
+			<div class="card-body">
+				<h2 class="card-title">Recent Views</h2>
+
+				<div class="flex items-center">
+					<div class="avatar">
+						<div class="w-10 rounded-full mr-5">
+						<img alt='asdasd' src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
+						</div>
+					</div>
+
+					<div class="text-lg mr-1">
+						Name
+					</div>
+
+					<div class="badge badge-sm bg-pink-300">
+						<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="white" class="" viewBox="0 0 16 16">
+							<path fill-rule="evenodd" d="M8 1a4 4 0 1 0 0 8 4 4 0 0 0 0-8M3 5a5 5 0 1 1 5.5 4.975V12h2a.5.5 0 0 1 0 1h-2v2.5a.5.5 0 0 1-1 0V13h-2a.5.5 0 0 1 0-1h2V9.975A5 5 0 0 1 3 5"/>
+						</svg>
+					</div>
+				</div>
+
+				<div class="flex items-center">
+					<div class="avatar">
+						<div class="w-10 rounded-full mr-5">
+						<img alt='asdasd' src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
+						</div>
+					</div>
+
+					<div class="text-lg mr-1">
+						Name
+					</div>
+
+					<div class="badge badge-sm bg-blue-300">
+						<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="white" class="white" viewBox="0 0 16 16">
+							<path fill-rule="evenodd" d="M9.5 2a.5.5 0 0 1 0-1h5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-1 0V2.707L9.871 6.836a5 5 0 1 1-.707-.707L13.293 2zM6 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8"/>
+					 	</svg>
+					</div>
+				</div>
+				
+			</div>
+		</div>
+
+		<div class="card bg-base-100 card-sm shadow-md mb-3">
+			<div class="card-body">
+			  <h2 class="card-title">Recent Likes</h2>
+
+			  <div class="flex items-center">
+				<div class="avatar">
+					<div class="w-10 rounded-full mr-5">
+					<img alt='asdasd' src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
+					</div>
+				</div>
+
+				<div class="text-lg mr-1">
+					Name
+				</div>
+
+				<div class="badge badge-sm bg-gray-300">
+					<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" class="bi bi-gender-ambiguous" viewBox="0 0 16 16">
+						<path fill-rule="evenodd" d="M11.5 1a.5.5 0 0 1 0-1h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V1.707l-3.45 3.45A4 4 0 0 1 8.5 10.97V13H10a.5.5 0 0 1 0 1H8.5v1.5a.5.5 0 0 1-1 0V14H6a.5.5 0 0 1 0-1h1.5v-2.03a4 4 0 1 1 3.471-6.648L14.293 1zm-.997 4.346a3 3 0 1 0-5.006 3.309 3 3 0 0 0 5.006-3.31z"/>
+					  </svg>
+				</div>
+			</div>
+
+
+			</div>
+		</div>
+	</div>
+
+	<div class="inline-flex items-center justify-center w-full mb-5">
+		<hr class="w-full h-[2px] bg-pink-200 border-0 rounded-sm">
+		<div class="absolute px-4 -translate-x-1/2 bg-white left-1/2">
+			<svg xmlns="http://www.w3.org/2000/svg" fill="pink" viewBox="0 0 24 24" stroke-width="1.5" stroke="pink" class="size-6">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+			  </svg>
+		</div>
+	</div>
+
+	<!--Settings-->
 	<div class="px-2">
 		
 		<!--Auto location-->
@@ -209,7 +294,7 @@
 			<div class="w-35 sm:w-auto">
 				<label class="input validator">
 					<svg class="h-[1em] opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g stroke-linejoin="round" stroke-linecap="round" stroke-width="2.5" fill="none" stroke="currentColor"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></g></svg>
-					<input type="email" placeholder="a@mail.com" required />
+					<input type="email" required />
 				</label>
 				<div class="validator-hint hidden">Enter valid email address</div>
 			</div>

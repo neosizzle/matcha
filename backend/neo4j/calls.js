@@ -408,6 +408,7 @@ exports.create_new_user = async function ({
     bio,
     tags,
     enable_auto_location,
+    location_manual,
     fame_rating,
     gender
 }) {
@@ -430,6 +431,7 @@ exports.create_new_user = async function ({
             bio: $bio,
             tags: $tags,
             enable_auto_location: $enable_auto_location,
+            location_manual: $location_manual,
             fame_rating: $fame_rating,
             gender: $gender
         })
@@ -448,6 +450,7 @@ exports.create_new_user = async function ({
         bio,
         tags,
         enable_auto_location,
+        location_manual,
         fame_rating,
         gender
     };
@@ -463,6 +466,7 @@ exports.update_user = async function ({
     displayname,
     bio,
     enable_auto_location,
+    location_manual,
     tags,
     gender
 }) {
@@ -487,6 +491,7 @@ exports.update_user = async function ({
             bio: $bio,
             tags: $tags,
             enable_auto_location: $enable_auto_location,
+            location_manual: $location_manual
             fame_rating: $fame_rating,
             gender: $gender
         }
@@ -505,6 +510,7 @@ exports.update_user = async function ({
         bio,
         tags, // yes, i am aware user may break the serialization here.
         enable_auto_location,
+        location_manual,
         fame_rating:  existing_user.fame_rating,
         gender
     };

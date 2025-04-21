@@ -26,7 +26,7 @@ router.post('/upload_img', [auth_check_mdw.checkJWT], async function(req, res, n
 
 router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
   const body = req.body;
-  const required_fields = ['images', 'sexuality', 'displayname', 'bio', 'enable_auto_location', 'gender']
+  const required_fields = ['images', 'sexuality', 'displayname', 'bio', 'enable_auto_location', 'gender', 'location_manual']
 
   if (!required_fields.every(key => key in body))
     return res.status(400).send({'detail': `fields ${required_fields} are required`})
@@ -48,7 +48,7 @@ router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
     if (!Object.values(enums.GENDER).includes(gender))
       return res.status(400).send({"detail": 'invalid gender'})
 
-    await neo4j_calls.update_user({id: `${id}`, images, sexuality, displayname, bio, tags, enable_auto_location, gender})
+    await neo4j_calls.update_user({id: `${id}`, images, sexuality, displayname, bio, tags, enable_auto_location, gender, location_manual})
 		return res.status(200).send({"data": {}})
   } catch (error) {
       if (error.message == enums.DbErrors.NOTFOUND)

@@ -18,6 +18,8 @@ export interface User {
 	birthday: Date;
 	enable_auto_location: boolean;
 	fame_rating: number;
+	location_manual: string;
+	tags: string[]
 	gender: Gender;
 	sexuality: Sexuality;
 	verified: boolean;
