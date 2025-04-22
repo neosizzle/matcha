@@ -26,7 +26,7 @@ router.post('/upload_img', [auth_check_mdw.checkJWT], async function(req, res, n
 
 router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
   const body = req.body;
-  const required_fields = ['images', 'sexuality', 'displayname', 'bio', 'enable_auto_location', 'gender', 'location_manual']
+  const required_fields = ['images', 'sexuality', 'displayname', 'bio', 'enable_auto_location', 'gender', 'location_manual', 'email']
 
   if (!required_fields.every(key => key in body))
     return res.status(400).send({'detail': `fields ${required_fields} are required`})
@@ -39,6 +39,9 @@ router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
     const bio = body['bio']
     const enable_auto_location = body['enable_auto_location']
     const gender = body['gender']
+    const email = body['email']
+    const location_manual = body['location_manual']
+
     const id = req.user.id
 
     // Some validation
@@ -48,11 +51,13 @@ router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
     if (!Object.values(enums.GENDER).includes(gender))
       return res.status(400).send({"detail": 'invalid gender'})
 
-    await neo4j_calls.update_user({id: `${id}`, images, sexuality, displayname, bio, tags, enable_auto_location, gender, location_manual})
-		return res.status(200).send({"data": {}})
+    const new_user = await neo4j_calls.update_user({id: `${id}`, images, sexuality, displayname, bio, tags, enable_auto_location, gender, location_manual, email})
+		return res.status(200).send({"data": new_user})
   } catch (error) {
       if (error.message == enums.DbErrors.NOTFOUND)
-              return res.status(404).send({'detail': "user not found"})
+        return res.status(404).send({'detail': "user not found"})
+      if (error.message == enums.DbErrors.EXISTS)
+        return res.status(400).send({'detail': "Email already exists"})
       debug(error)
       return res.status(500).send({'detail' : "Internal server error"});
   }

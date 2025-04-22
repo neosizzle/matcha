@@ -69,7 +69,7 @@
 		{
 			const data = await resp.json();
 			const user_obj = data['data']
-			const user: User = {...user_obj, birthday: new Date(user_obj['birthday']), images: user_obj['images'].split(",").filter((x: string)=>x!='')}
+			const user: User = {...user_obj, birthday: new Date(user_obj['birthday']), images: user_obj['images'].split(",").filter((x: string)=>x!=''), tags: user_obj['tags'].split(",").filter((x: string)=>x!='')}
 			glob_user.update(() => user)
 			goto('/app/home')
 		}

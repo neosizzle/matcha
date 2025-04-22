@@ -18,7 +18,7 @@ $: {
 </script>
 
 
-<div class="absolute px-10 left-0 top-[20px] z-10 w-full">
+<div class="sticky px-10 left-0 top-[20px] z-10 w-full">
 	{#each localToastList as toast, index (toast.id)}
 		<div class="animate-jump-in animate-duration-[400ms]">
 			<div class="

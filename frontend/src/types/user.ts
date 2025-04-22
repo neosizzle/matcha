@@ -24,4 +24,5 @@ export interface User {
 	sexuality: Sexuality;
 	verified: boolean;
 	images: string[];
+	iden_42: string;
 }

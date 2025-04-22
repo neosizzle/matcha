@@ -91,7 +91,9 @@ exports.get_or_create_user_42 = async function ({
             displayname: $displayname,
             birthday: $birthday,
             bio: $bio,
+            tags: $tags,
             enable_auto_location: $enable_auto_location,
+            location_manual: $location_manual,
             fame_rating: $fame_rating,
             gender: $gender
         })
@@ -110,7 +112,9 @@ exports.get_or_create_user_42 = async function ({
             bio: "",
             enable_auto_location: true,
             fame_rating: 0,
-            gender: enums.GENDER.NON_BINARY
+            gender: enums.GENDER.NON_BINARY,
+            tags: "",
+            location_manual: "",
         };
         let newuser_query_record = await session.run(query, params);
         const user = newuser_query_record.records[0].get('data').properties
@@ -468,7 +472,8 @@ exports.update_user = async function ({
     enable_auto_location,
     location_manual,
     tags,
-    gender
+    gender,
+    email
 }) {
     let session = driver.session();
     const existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id })
@@ -476,6 +481,16 @@ exports.update_user = async function ({
         throw new Error(enums.DbErrors.NOTFOUND);
 
     const existing_user = existing_user_q.records[0].get('u').properties
+    
+    const existing_email = await session.run('MATCH (u:User) WHERE u.email = $email RETURN u', { email })
+    if (existing_email.records.length != 0 && existing_user.email != email)
+        throw new Error(enums.DbErrors.EXISTS);
+
+    // if email is changed, need to ensure that user is not verified
+    let verified = existing_user.verified
+    if (existing_user.email != email)
+        verified = false
+
      const query = `
         MATCH (u:User) WHERE u.id  = $id
         SET u = {
@@ -491,7 +506,7 @@ exports.update_user = async function ({
             bio: $bio,
             tags: $tags,
             enable_auto_location: $enable_auto_location,
-            location_manual: $location_manual
+            location_manual: $location_manual,
             fame_rating: $fame_rating,
             gender: $gender
         }
@@ -500,10 +515,10 @@ exports.update_user = async function ({
     const params = {
         id,
         images,
-        email: existing_user.email,
+        email,
         password: existing_user.password,
         iden_42: existing_user.iden_42 | "",
-        verified: existing_user.verified,
+        verified,
         sexuality,
         displayname,
         birthday: existing_user.birthday,
@@ -514,7 +529,9 @@ exports.update_user = async function ({
         fame_rating:  existing_user.fame_rating,
         gender
     };
-    await session.run(query, params);
+    const res = await session.run(query, params);
+    delete res['password']
+    return res.records[0].get('u').properties
 }
 
 // TODO ...

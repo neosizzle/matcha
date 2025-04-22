@@ -1,10 +1,23 @@
 <script lang="ts">
     import Button from "../../../components/Button.svelte";
+	import { onMount } from "svelte";
 	import { user as glob_user } from "../../../stores/globalStore.svelte"
 	import { Gender, type User } from "../../../types/user";
     import { calculate_age_from_date } from "../../../utils/globalFunctions.svelte";
+	import { ToastType } from "../../../types/toast";
+    import { showToast } from "../../../utils/globalFunctions.svelte";
+    import { goto } from "$app/navigation";
 
 	let tags_copy: string[] = $state([])
+	let displayname_copy = $state("")
+	let bio_copy = $state("")
+	let birthday_copy = $state(new Date().toISOString().split('T')[0]) // need to serialize into YYYY-MM-DD for form
+	let gender_copy = $state(Gender.NON_BINARY)
+	let toggle_autolocation_copy = $state(true)
+	let email_copy = $state("")
+	let curr_tag_input = $state("")
+	let recent_views: User[] = $state([])
+	let recent_likes: User[] = $state([])
 
 	let local_user: User | null = $state(null); 
 	glob_user.subscribe(e => {
@@ -12,9 +25,37 @@
 		{
 			local_user = e
 			tags_copy = structuredClone(e.tags)
+			displayname_copy = e.displayname
+			bio_copy = e.bio
+			birthday_copy = e.birthday.toISOString().split('T')[0]
+			gender_copy = e.gender
+			toggle_autolocation_copy = e.enable_auto_location
+			email_copy = e.email
 		}
 	})
 
+	let logout_diabled = $state(false)
+
+	async function logout() {
+		logout_diabled = true
+		const payload = {
+			method: 'POST',
+			credentials: "include" as RequestCredentials,
+			headers: {
+				'Content-Type': 'application/json',
+			},
+		}
+		let fetch_res = await fetch('http://localhost:3000/auth/logout', payload)
+		if (fetch_res.ok)
+			return window.location.href = "/"
+		let err_msg = (await fetch_res.json())['detail']
+		showToast(err_msg, ToastType.ERROR)
+		logout_diabled = false
+	}
+
+	onMount(async () => {
+		// TODO; implement likes and views
+  })
 
 </script>
 
@@ -100,20 +141,20 @@
 			<h2 class="card-title">Basic Info</h2>
 			<fieldset class="fieldset mb-1">
 				<legend class="fieldset-legend">Display name</legend>
-				<input type="text" class="input input-ghost input-error" placeholder="What is your display name?" />
+				<input type="text" class="input input-ghost input-error" bind:value={displayname_copy} placeholder="What is your display name?" />
 			</fieldset>
 			
 			<fieldset class="fieldset mb-1">
 				<legend class="fieldset-legend">Birthday</legend>
-				<input type="date" class="input input-ghost"/>
+				<input type="date" class="input input-ghost" bind:value={birthday_copy}/>
 			</fieldset>
 
 			<fieldset class="fieldset mb-1">
 				<legend class="fieldset-legend">Gender</legend>
-					<select  class="select select-ghost">
-						<option value="nb" selected>Non binary</option>
-						<option value="f">Female</option>
-						<option value="m">Male</option>
+					<select  class="select select-ghost" bind:value={gender_copy}>
+						<option value="nb" selected={gender_copy == Gender.NON_BINARY}>Non binary</option>
+						<option value="f" selected={gender_copy == Gender.FEMALE} >Female</option>
+						<option value="m" selected={gender_copy == Gender.MALE} >Male</option>
 					</select>
 			</fieldset>
 		</div>
@@ -123,7 +164,7 @@
 	<div class="card bg-base-100 card-sm shadow-md mb-3">
 		<div class="card-body">
 		  <h2 class="card-title">Bio</h2>
-		  <textarea class="textarea textarea-ghost" placeholder="Dox yourself"></textarea>
+		  <textarea class="textarea textarea-ghost" placeholder="Dox yourself" bind:value={bio_copy}></textarea>
 		</div>
 	</div>	 
 
@@ -135,11 +176,16 @@
 		  <div class="join w-full">
 			<div class="w-full">
 			  <label class="input join-item">
-				<input type="text" placeholder="Enter a new tag" />
+				<input type="text" placeholder="Enter a new tag" bind:value={curr_tag_input}/>
 			  </label>
 			  <div class="fieldset-label text-white">Enter valid email address</div>
 			</div>
-			<Button customClass="join-item h-10">Add</Button>
+			<Button customClass="join-item h-10" onclick={() => {
+				if (tags_copy.includes(curr_tag_input))
+					return showToast("Tags must be unique", ToastType.ERROR)
+				tags_copy.push(curr_tag_input);
+				curr_tag_input = ""
+				}}>Add</Button>
 		  </div>
 
 		  <!-- Tag list-->
@@ -181,41 +227,39 @@
 			<div class="card-body">
 				<h2 class="card-title">Recent Views</h2>
 
-				<div class="flex items-center">
-					<div class="avatar">
-						<div class="w-10 rounded-full mr-5">
-						<img alt='asdasd' src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
+				{#each recent_views as view}
+					<div class="flex items-center">
+						<div class="avatar">
+							<div class="w-10 rounded-full mr-5">
+								<img alt='profile' src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
+							</div>
 						</div>
-					</div>
 
-					<div class="text-lg mr-1">
-						Name
-					</div>
-
-					<div class="badge badge-sm bg-pink-300">
-						<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="white" class="" viewBox="0 0 16 16">
-							<path fill-rule="evenodd" d="M8 1a4 4 0 1 0 0 8 4 4 0 0 0 0-8M3 5a5 5 0 1 1 5.5 4.975V12h2a.5.5 0 0 1 0 1h-2v2.5a.5.5 0 0 1-1 0V13h-2a.5.5 0 0 1 0-1h2V9.975A5 5 0 0 1 3 5"/>
-						</svg>
-					</div>
-				</div>
-
-				<div class="flex items-center">
-					<div class="avatar">
-						<div class="w-10 rounded-full mr-5">
-						<img alt='asdasd' src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
+						<div class="text-lg mr-1">
+							{view.displayname}
 						</div>
-					</div>
 
-					<div class="text-lg mr-1">
-						Name
+						{#if view.gender == Gender.FEMALE}
+						<div class="badge badge-sm bg-pink-300">
+							<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="white" class="" viewBox="0 0 16 16">
+								<path fill-rule="evenodd" d="M8 1a4 4 0 1 0 0 8 4 4 0 0 0 0-8M3 5a5 5 0 1 1 5.5 4.975V12h2a.5.5 0 0 1 0 1h-2v2.5a.5.5 0 0 1-1 0V13h-2a.5.5 0 0 1 0-1h2V9.975A5 5 0 0 1 3 5"/>
+							</svg>
+						</div>
+						{:else if view.gender == Gender.MALE}
+						<div class="badge badge-sm bg-blue-300">
+							<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="white" class="white" viewBox="0 0 16 16">
+								<path fill-rule="evenodd" d="M9.5 2a.5.5 0 0 1 0-1h5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-1 0V2.707L9.871 6.836a5 5 0 1 1-.707-.707L13.293 2zM6 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8"/>
+							 </svg>
+						</div>
+						{:else}
+						<div class="badge badge-sm bg-gray-300">
+							<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" class="bi bi-gender-ambiguous" viewBox="0 0 16 16">
+								<path fill-rule="evenodd" d="M11.5 1a.5.5 0 0 1 0-1h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V1.707l-3.45 3.45A4 4 0 0 1 8.5 10.97V13H10a.5.5 0 0 1 0 1H8.5v1.5a.5.5 0 0 1-1 0V14H6a.5.5 0 0 1 0-1h1.5v-2.03a4 4 0 1 1 3.471-6.648L14.293 1zm-.997 4.346a3 3 0 1 0-5.006 3.309 3 3 0 0 0 5.006-3.31z"/>
+							  </svg>
+						</div>
+						{/if}
 					</div>
-
-					<div class="badge badge-sm bg-blue-300">
-						<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="white" class="white" viewBox="0 0 16 16">
-							<path fill-rule="evenodd" d="M9.5 2a.5.5 0 0 1 0-1h5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-1 0V2.707L9.871 6.836a5 5 0 1 1-.707-.707L13.293 2zM6 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8"/>
-					 	</svg>
-					</div>
-				</div>
+				{/each}
 				
 			</div>
 		</div>
@@ -224,24 +268,39 @@
 			<div class="card-body">
 			  <h2 class="card-title">Recent Likes</h2>
 
-			  <div class="flex items-center">
-				<div class="avatar">
-					<div class="w-10 rounded-full mr-5">
-					<img alt='asdasd' src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
+			  {#each recent_likes as like}
+					<div class="flex items-center">
+						<div class="avatar">
+							<div class="w-10 rounded-full mr-5">
+								<img alt='profile' src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
+							</div>
+						</div>
+
+						<div class="text-lg mr-1">
+							{like.displayname}
+						</div>
+
+						{#if like.gender == Gender.FEMALE}
+						<div class="badge badge-sm bg-pink-300">
+							<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="white" class="" viewBox="0 0 16 16">
+								<path fill-rule="evenodd" d="M8 1a4 4 0 1 0 0 8 4 4 0 0 0 0-8M3 5a5 5 0 1 1 5.5 4.975V12h2a.5.5 0 0 1 0 1h-2v2.5a.5.5 0 0 1-1 0V13h-2a.5.5 0 0 1 0-1h2V9.975A5 5 0 0 1 3 5"/>
+							</svg>
+						</div>
+						{:else if like.gender == Gender.MALE}
+						<div class="badge badge-sm bg-blue-300">
+							<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="white" class="white" viewBox="0 0 16 16">
+								<path fill-rule="evenodd" d="M9.5 2a.5.5 0 0 1 0-1h5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-1 0V2.707L9.871 6.836a5 5 0 1 1-.707-.707L13.293 2zM6 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8"/>
+							 </svg>
+						</div>
+						{:else}
+						<div class="badge badge-sm bg-gray-300">
+							<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" class="bi bi-gender-ambiguous" viewBox="0 0 16 16">
+								<path fill-rule="evenodd" d="M11.5 1a.5.5 0 0 1 0-1h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V1.707l-3.45 3.45A4 4 0 0 1 8.5 10.97V13H10a.5.5 0 0 1 0 1H8.5v1.5a.5.5 0 0 1-1 0V14H6a.5.5 0 0 1 0-1h1.5v-2.03a4 4 0 1 1 3.471-6.648L14.293 1zm-.997 4.346a3 3 0 1 0-5.006 3.309 3 3 0 0 0 5.006-3.31z"/>
+							  </svg>
+						</div>
+						{/if}
 					</div>
-				</div>
-
-				<div class="text-lg mr-1">
-					Name
-				</div>
-
-				<div class="badge badge-sm bg-gray-300">
-					<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" class="bi bi-gender-ambiguous" viewBox="0 0 16 16">
-						<path fill-rule="evenodd" d="M11.5 1a.5.5 0 0 1 0-1h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V1.707l-3.45 3.45A4 4 0 0 1 8.5 10.97V13H10a.5.5 0 0 1 0 1H8.5v1.5a.5.5 0 0 1-1 0V14H6a.5.5 0 0 1 0-1h1.5v-2.03a4 4 0 1 1 3.471-6.648L14.293 1zm-.997 4.346a3 3 0 1 0-5.006 3.309 3 3 0 0 0 5.006-3.31z"/>
-					  </svg>
-				</div>
-			</div>
-
+				{/each}
 
 			</div>
 		</div>
@@ -263,7 +322,7 @@
 		<div class="flex justify-between mb-2">
 			<div>Auto Location</div>
 			<div>
-				<input type="checkbox" class="toggle checked:border-pink-300 checked:text-pink-400" />
+				<input type="checkbox" bind:checked={toggle_autolocation_copy} class="toggle checked:border-pink-300 checked:text-pink-400" />
 			</div>
 		</div>
 
@@ -271,7 +330,7 @@
 		<div class="flex justify-between items-center mb-2">
 			<div class="w-10 sm:w-full">Manual Location</div>
 			<div>
-				<select disabled={false} class="select border-pink-300 sm:w-60">
+				<select disabled={toggle_autolocation_copy} class="select border-pink-300 sm:w-60">
 					<option disabled selected>Pick a location</option>
 					<option value="1">Crimson</option>
 					<option value="2">Amber</option>
@@ -281,27 +340,31 @@
 		</div>
 
 		<!--Verify email-->
+		{#if !local_user?.verified}
 		<div class="flex justify-between items-center mb-2">
 			<div class="">Verify email</div>
 			<div>
-				<Button isLoading customClass="w-full">Verify</Button>
+				<Button customClass="w-full" onclick={() => goto("/verify_email")}>Verify</Button>
 			</div>
 		</div>
+		{/if}
 
 		<!--change email-->
+		{#if !local_user?.iden_42}
 		<div class="flex justify-between items-center mb-2">
 			<div class="">Email</div>
 			<div class="w-35 sm:w-auto">
 				<label class="input validator">
 					<svg class="h-[1em] opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g stroke-linejoin="round" stroke-linecap="round" stroke-width="2.5" fill="none" stroke="currentColor"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></g></svg>
-					<input type="email" required />
+					<input type="email" required bind:value={email_copy} />
 				</label>
 				<div class="validator-hint hidden">Enter valid email address</div>
 			</div>
 		</div>
+		{/if}
 
 		<!-- Logout -->
-		<button class="btn btn-error btn-outline mb-3">Log out</button>
+		<button class="btn btn-error btn-outline mb-3" disabled={logout_diabled} onclick={logout}>Log out</button>
 
 		<div class="px-0 sm:px-3">
 			<Button customClass="w-full">Save settings</Button>

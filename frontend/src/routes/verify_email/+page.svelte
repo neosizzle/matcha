@@ -40,6 +40,11 @@
 				otp_error = true
 				return showToast(err_msg, ToastType.ERROR)
 			}
+			glob_user.update((old_user) => {
+				if (old_user)
+					old_user.verified = true
+				return old_user
+			})
 			showToast('Email verified', ToastType.SUCCESS)
 			goto("/app/home")
 		})

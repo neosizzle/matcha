@@ -1,5 +1,8 @@
 <script lang='ts'>
 	import { onMount } from 'svelte';
+	import { user as glob_user } from "../../stores/globalStore.svelte"
+    import type { User } from "../../types/user";
+	import { goto } from '$app/navigation';
 
 	let isLoading = true;
 
@@ -26,10 +29,12 @@
 		.then(data => {
 			const err_msg = data['detail']
 			if (err_msg)
-				window.location.href = "/"
-
-			// TODO set user store here
-			window.location.href = "/app/home"
+			window.location.href = "/"
+		
+			const user_obj = data['data']['user']
+			const user: User = {...user_obj, birthday: new Date(user_obj['birthday']), images: user_obj['images'].split(",").filter((x: string)=>x!=''), tags: user_obj['tags'].split(",").filter((x: string)=>x!='')}
+			glob_user.update(() => user)
+			goto("/app/home")
 		})
 		.catch(error => {
 			console.log(error)

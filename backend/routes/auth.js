@@ -121,7 +121,6 @@ router.post('/login', async function(req, res) {
 			return res.status(400).send({'detail': `Too old, this platform is made for minors only`})
 
 		try {
-			console.log(user_iden)
 			const user = await neo4j_calls.get_or_create_user_42({user_iden, birthday: user_bd})
 			const session = await neo4j_calls.create_session_with_user({user_id: user.id})
 			res.cookie('token', session['hash'], {sameSite: "strict", httpOnly: true, maxAge: COOKIE_AGE_MILLISECONDS})
