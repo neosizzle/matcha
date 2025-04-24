@@ -3,6 +3,7 @@
 	import { user as glob_user } from "../../stores/globalStore.svelte"
     import type { User } from "../../types/user";
 	import { goto } from '$app/navigation';
+    import { deserialize_user_object } from '../../utils/globalFunctions.svelte';
 
 	let isLoading = true;
 
@@ -32,7 +33,7 @@
 			window.location.href = "/"
 		
 			const user_obj = data['data']['user']
-			const user: User = {...user_obj, birthday: new Date(user_obj['birthday']), images: user_obj['images'].split(",").filter((x: string)=>x!=''), tags: user_obj['tags'].split(",").filter((x: string)=>x!='')}
+			const user = deserialize_user_object(user_obj)
 			glob_user.update(() => user)
 			goto("/app/home")
 		})

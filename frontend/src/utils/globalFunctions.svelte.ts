@@ -1,6 +1,7 @@
 
-import { toasts } from "../stores/globalStore.svelte";
+import { toasts, user } from "../stores/globalStore.svelte";
 import type { ToastType } from "../types/toast";
+import type { User } from "../types/user";
 
 export function showToast(message: string, type: ToastType) {
 	const id = Date.now();
@@ -24,4 +25,17 @@ export function calculate_age_from_date(date: Date|null|undefined) {
 	}
 
 	return age;
+}
+
+type RawUser = {
+	[key: string]: any;
+  };
+  
+export function deserialize_user_object(user_obj: RawUser): User {
+	return {
+		...user_obj,
+		birthday: new Date(user_obj.birthday),
+		images: user_obj.images.split(",").filter((x: string) => x !== ""),
+		tags: user_obj.tags.split(",").filter((x: string) => x !== "")
+	} as User;
 }

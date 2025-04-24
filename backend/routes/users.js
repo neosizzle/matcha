@@ -4,6 +4,7 @@ const auth_check_mdw = require("../middleware/authcheck")
 const upload_img_mdw = require("../middleware/fileupload")
 
 var express = require('express');
+const { DATE_REGEX } = require("../constants/regex");
 var router = express.Router();
 var debug = require('debug')('backend:router:auth');
 
@@ -26,7 +27,7 @@ router.post('/upload_img', [auth_check_mdw.checkJWT], async function(req, res, n
 
 router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
   const body = req.body;
-  const required_fields = ['images', 'sexuality', 'displayname', 'bio', 'enable_auto_location', 'gender', 'location_manual', 'email']
+  const required_fields = ['images', 'sexuality', 'displayname', 'bio', 'enable_auto_location', 'gender', 'location_manual', 'email', 'birthday']
 
   if (!required_fields.every(key => key in body))
     return res.status(400).send({'detail': `fields ${required_fields} are required`})
@@ -41,7 +42,8 @@ router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
     const gender = body['gender']
     const email = body['email']
     const location_manual = body['location_manual']
-
+    const birthday = body['birthday']
+    
     const id = req.user.id
 
     // Some validation
@@ -51,7 +53,19 @@ router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
     if (!Object.values(enums.GENDER).includes(gender))
       return res.status(400).send({"detail": 'invalid gender'})
 
-    const new_user = await neo4j_calls.update_user({id: `${id}`, images, sexuality, displayname, bio, tags, enable_auto_location, gender, location_manual, email})
+    if (!DATE_REGEX.test(birthday))
+        return res.status(400).send({'detail': `birthday is invalid, format YYYY-MM-DD is required`})
+    
+      const bd_day = new Date(birthday);
+      const today = new Date();
+      const bd_requirement = today.setFullYear(today.getFullYear() - 18);
+      if (isNaN(bd_day.getTime()))
+        return res.status(400).send({'detail': `birthday is invalid`})
+    
+      if (bd_day < bd_requirement)
+        return res.status(400).send({'detail': `Too old, this platform is made for minors only`})
+
+    const new_user = await neo4j_calls.update_user({id: `${id}`, images, sexuality, displayname, bio, tags, enable_auto_location, gender, location_manual, email, birthday})
 		return res.status(200).send({"data": new_user})
   } catch (error) {
       if (error.message == enums.DbErrors.NOTFOUND)

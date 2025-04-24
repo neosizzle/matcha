@@ -76,7 +76,6 @@ exports.get_or_create_user_42 = async function ({
     let session = driver.session();
     const query_record = await session.run('MATCH (u:User) WHERE u.iden_42 = $user_iden RETURN u as data', { user_iden })
     
-    // TODO: no users, create new user
     if (query_record.records.length == 0)
     {
         const query = `
@@ -473,7 +472,8 @@ exports.update_user = async function ({
     location_manual,
     tags,
     gender,
-    email
+    email,
+    birthday
 }) {
     let session = driver.session();
     const existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id })
@@ -517,11 +517,11 @@ exports.update_user = async function ({
         images,
         email,
         password: existing_user.password,
-        iden_42: existing_user.iden_42 | "",
+        iden_42: existing_user.iden_42,
         verified,
         sexuality,
         displayname,
-        birthday: existing_user.birthday,
+        birthday,
         bio,
         tags, // yes, i am aware user may break the serialization here.
         enable_auto_location,
