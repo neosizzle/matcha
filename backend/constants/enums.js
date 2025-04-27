@@ -17,5 +17,6 @@ exports.DbErrors = Object.freeze({
 	UNAUTHORIZED: 'DbErrors.unauthorized',
 	EXPIRED: 'DbErrors.expired',
 	RATE_LIMIT: 'DbErrors.ratelimit',
+	MISC: 'DbErrors.misc',
 
 });

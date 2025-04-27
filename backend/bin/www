@@ -7,7 +7,8 @@ require('dotenv').config();  // Load environment variables from .env file
 var app = require('../app');
 var debug = require('debug')('backend:server');
 var http = require('http');
-
+const socketIo = require('socket.io');
+const handle_ws = require('../ws/ws_handler')
 /**
  * Get port from environment and store in Express.
  */
@@ -20,6 +21,18 @@ app.set('port', port);
  */
 
 var server = http.createServer(app);
+
+/**
+ * Create WS server
+ */
+const wscorsOptions = {
+  origin: 'http://localhost:5173',
+  credentials: true,
+};
+
+const io = socketIo(server, { cors: wscorsOptions });
+io.on('connection', handle_ws);
+
 
 /**
  * Listen on provided port, on all network interfaces.

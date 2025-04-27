@@ -23,7 +23,9 @@
     "neo4j-driver": "^5.28.1",
     "node-fetch": "^3.3.2",
     "nodemailer": "^6.10.0",
-    "uuid": "^11.1.0"
+    "socket.io": "^4.8.1",
+    "uuid": "^11.1.0",
+    "ws": "^8.18.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

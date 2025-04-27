@@ -6,6 +6,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 
+// TODO await session.close(); after every new session (recommended)
 // Database init code
 const init_fn = async () => {
     let session = driver.session();
@@ -534,5 +535,151 @@ exports.update_user = async function ({
     return res.records[0].get('u').properties
 }
 
-// TODO ...
 // USER module end
+
+// MATCHING module start
+exports.get_likes = async function({
+    id
+}) {
+    let session = driver.session();
+    let existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+    
+    const result = await session.run(`
+        MATCH (liker:User)-[:Liked]->(liked:User {id: $id})
+        RETURN liker
+        LIMIT 5
+    `, { id });
+    
+    const users = result.records.map(record => {
+        const userNode = record.get('liker');
+        return userNode.properties;
+    });
+    return users
+}
+
+exports.get_matches = async function({
+    id
+}) {
+    let session = driver.session();
+    let existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+    
+    const result = await session.run(`
+        MATCH (matcher:User)-[:Matched]->(matched:User {id: $id})
+        RETURN matcher
+        LIMIT 5
+    `, { id });
+    
+    const users = result.records.map(record => {
+        const userNode = record.get('matcher');
+        return userNode.properties;
+    });
+    return users
+}
+
+exports.get_views = async function({
+    id
+}) {
+    let session = driver.session();
+    let existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+    
+    const result = await session.run(`
+        MATCH (viewer:User)-[:Viewed]->(viewed:User {id: $id})
+        RETURN viewer
+        LIMIT 5
+    `, { id });
+    
+    const users = result.records.map(record => {
+        const userNode = record.get('viewer');
+        return userNode.properties;
+    });
+    return users
+}
+
+exports.like_user = async function ({
+    user_liker_id,
+    user_liked_id
+}) {
+    let session = driver.session();
+    let existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_liker_id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_liked_id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    // if user_liked had a 'Blocked' relationship user_liker before or vice versa, throw a DbErrors.Unauthorized
+    result = await session.run(`
+        MATCH (a:User {id: $liker})-[r:Blocked]-(b:User {id: $liked})
+        RETURN r
+    `, {
+        liker: user_liker_id,
+        liked: user_liked_id
+    });
+
+    if (result.records.length > 0)
+        throw new Error(enums.DbErrors.UNAUTHORIZED);
+
+    // if user_liker had liked user_liked before, throw a DbErrors.EXIST
+    result = await session.run(`
+        MATCH (a:User {id: $liker})-[r:Liked]->(b:User {id: $liked})
+        RETURN r
+    `, {
+        liker: user_liker_id,
+        liked: user_liked_id
+    });
+
+    if (result.records.length > 0)
+        throw new Error(enums.DbErrors.EXIST);
+
+    // if user_liked had liked user_liker before, remove the 'Liked' relationship and replace with 'Matched' relationship
+    result = await session.run(`
+        MATCH (a:User {id: $liked})-[r:Liked]->(b:User {id: $liker})
+        RETURN r
+    `, {
+        liker: user_liker_id,
+        liked: user_liked_id
+    });
+
+    if (result.records.length > 0) {
+        // Remove existing 'Liked' relationship
+        await session.run(`
+            MATCH (a:User {id: $liked})-[r:Liked]->(b:User {id: $liker})
+            DELETE r
+        `, {
+            liker: user_liker_id,
+            liked: user_liked_id
+        });
+
+        // Create 'Matched' relationships both ways
+        await session.run(`
+            MATCH (a:User {id: $liker}), (b:User {id: $liked})
+            CREATE (a)-[:Matched { created_at: datetime() }]->(b),
+                   (b)-[:Matched { created_at: datetime() }]->(a)
+        `, {
+            liker: user_liker_id,
+            liked: user_liked_id
+        });
+
+        return { matched: true };
+    }
+
+    // create like
+    await session.run(`
+        MATCH (a:User {id: $liker}), (b:User {id: $liked})
+        CREATE (a)-[:Liked { created_at: datetime() }]->(b)
+    `, {
+        liker: user_liker_id,
+        liked: user_liked_id
+    });
+
+    return { matched: false };
+}
+
+// MATCHING module end

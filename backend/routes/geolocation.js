@@ -2,7 +2,7 @@ const auth_check_mdw = require("../middleware/authcheck")
 
 var express = require('express');
 var router = express.Router();
-var debug = require('debug')('backend:router:auth');
+var debug = require('debug')('backend:router:geo');
 
 
 router.get('/ip', [auth_check_mdw.checkJWT], async function(req, res, next) {
@@ -28,6 +28,7 @@ router.get('/ip', [auth_check_mdw.checkJWT], async function(req, res, next) {
 		} });
 	
 	  } catch (error) {
+		debug(error)
 		res.status(500).send({
 		  'detail': error
 		});
@@ -39,7 +40,6 @@ router.get('/coords', [auth_check_mdw.checkJWT], async function(req, res, next) 
 	const body = req.query;
 	const required_fields = ['lat', 'lon']
 
-	console.log(body)
   	if (!required_fields.every(key => key in body))
 		return res.status(400).send({'detail': `fields ${required_fields} are required`})
 

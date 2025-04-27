@@ -9,6 +9,7 @@
     import { goto } from "$app/navigation";
 	import CITIES from '../../../places.json' assert { type: 'json' };
   	import type { Location } from "../../../types/location";
+	import io from "socket.io-client"; // Import Socket.IO client
 
 	let curr_location: Location | null = $state(null)
 	let tags_copy: string[] = $state([])
@@ -240,10 +241,25 @@
 			window.location.href = "/"
 
 		// set global store if OK and store is empty (refresh)
-		const data = await response.json();
-		const user_obj = data['data']
-		const user: User = deserialize_user_object(user_obj)
-		glob_user.update(() => user)
+		if (!local_user)
+		{
+			console.log("writing to store....")
+			const data = await response.json();
+			const user_obj = data['data']
+			const user: User = deserialize_user_object(user_obj)
+			glob_user.update(() => user)
+		}
+
+		
+		// NOTE: ws should be in own useeffect. check user -> check ws -> connect ws
+		// TEST WS
+		// const ws_conn_options = {
+		// 	withCredentials: true
+		// }
+		// const socket = io("http://localhost:3000", ws_conn_options);
+		// socket.on("message", (msg) => {
+		// 	console.log('message: ' + msg)
+		// });
 
 		response = await fetch("http://localhost:3000/geo/ip", payload);
 		let body = await response.json();
@@ -545,7 +561,7 @@
 		<div class="flex justify-between items-center mb-2">
 			<div class="w-10 sm:w-full">Manual Location</div>
 			<div>
-				<select disabled={toggle_autolocation_copy} bind:value={location_manual_copy} class="select border-pink-300 sm:w-60">
+				<select disabled={toggle_autolocation_copy} bind:value={location_manual_copy} class="select border-pink-300 w-40 sm:w-60">
 					<option disabled selected={location_manual_copy == ''}>Pick a location</option>
 					{#each CITIES as city }
 						<option value={`${city.name}, ${city.district}, ${city.state}, Malaysia`} selected={location_manual_copy == 'Crimson'} >{`${city.name}, ${city.district}, ${city.state}, Malaysia`}</option>
