@@ -7,7 +7,10 @@
 	import { ToastType } from "../../../types/toast";
     import { showToast } from "../../../utils/globalFunctions.svelte";
     import { goto } from "$app/navigation";
+	import CITIES from '../../../places.json' assert { type: 'json' };
+  	import type { Location } from "../../../types/location";
 
+	let curr_location: Location | null = $state(null)
 	let tags_copy: string[] = $state([])
 	let displayname_copy = $state("")
 	let bio_copy = $state("")
@@ -65,7 +68,6 @@
 		if (!local_user)
 			return
 		save_changes_disabled = true
-		console.log(tags_copy.join(","))
 		const payload = {
 			method: 'PUT',
 			credentials: "include" as RequestCredentials,
@@ -236,8 +238,30 @@
 		let response = await fetch("http://localhost:3000/users/me", payload);
 		if (response.status == 401)
 			window.location.href = "/"
+
+		// set global store if OK and store is empty (refresh)
+		const data = await response.json();
+		const user_obj = data['data']
+		const user: User = deserialize_user_object(user_obj)
+		glob_user.update(() => user)
+
+		response = await fetch("http://localhost:3000/geo/ip", payload);
+		let body = await response.json();
+		curr_location = body['data'] as Location
+
+		if ("geolocation" in navigator) {
+			navigator.geolocation.getCurrentPosition(async (position) => {
+				// doSomething(position.coords.latitude, position.coords.longitude);
+				let response = await fetch(`http://localhost:3000/geo/coords?lat=${position.coords.latitude}&lon=${position.coords.longitude}`, payload);
+				let body = await response.json();
+				curr_location = body['data'] as Location
+			});
+		} else {
+			// geolocation unavail, do nothing as we already have IP location
+		}
 		
 		// TODO; implement likes and views
+		
   	})
 
 </script>
@@ -270,9 +294,9 @@
 				</div>
 				<div class="max-w-48"> 
 					{#if local_user?.enable_auto_location}
-						<div>TODO: use geoloc api if manual location is diabled</div>
+						<div>{curr_location?.name}</div>
 						{:else}
-						<p>Address, asdsadsa sd sad sa, sadasd {local_user?.location_manual}</p> 
+						<p>{local_user?.location_manual}</p> 
 					{/if}
 				</div>
 			</div>
@@ -287,14 +311,6 @@
 
 			<!--Image carousel-->
 			<div class="carousel rounded-box carousel-vertical w-[90vw] sm:w-[50vw] md:w-[50vw] lg:w-[25vw] h-96 sm:h-120 mb-3">
-
-				<div class="carousel-item h-full w-full bg-cover bg-center bg-[url(https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp)]">
-					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<!-- svelte-ignore a11y_click_events_have_key_events -->
-					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="red" class="size-6 ml-auto my-3 mr-3 cursor-pointer" onclick={() => {}}>
-						<path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-					</svg>	
-				</div>
 
 				{#if local_user}
 					{#each local_user.images as image}
@@ -531,9 +547,9 @@
 			<div>
 				<select disabled={toggle_autolocation_copy} bind:value={location_manual_copy} class="select border-pink-300 sm:w-60">
 					<option disabled selected={location_manual_copy == ''}>Pick a location</option>
-					<option value="Crimson" selected={location_manual_copy == 'Crimson'} >Crimson</option>
-					<option value="Amber" selected={location_manual_copy == 'Amber'} >Amber</option>
-					<option value="Velvet" selected={location_manual_copy == 'Velvet'} >Velvet</option>
+					{#each CITIES as city }
+						<option value={`${city.name}, ${city.district}, ${city.state}, Malaysia`} selected={location_manual_copy == 'Crimson'} >{`${city.name}, ${city.district}, ${city.state}, Malaysia`}</option>
+					{/each}
 				  </select>
 			</div>
 		</div>

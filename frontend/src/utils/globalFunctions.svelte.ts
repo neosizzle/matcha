@@ -1,5 +1,5 @@
 
-import { toasts, user } from "../stores/globalStore.svelte";
+import { toasts } from "../stores/globalStore.svelte";
 import type { ToastType } from "../types/toast";
 import type { User } from "../types/user";
 
@@ -28,6 +28,7 @@ export function calculate_age_from_date(date: Date|null|undefined) {
 }
 
 type RawUser = {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	[key: string]: any;
   };
   

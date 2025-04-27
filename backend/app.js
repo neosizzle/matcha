@@ -7,6 +7,7 @@ var path = require('path');
 
 var usersRouter = require('./routes/users');
 var authRouter = require('./routes/auth');
+var geoRouter = require('./routes/geolocation');
 
 var app = express();
 
@@ -25,6 +26,7 @@ app.use('/public', express.static(path.resolve('./public')));
 
 app.use('/users', usersRouter);
 app.use('/auth', authRouter);
+app.use('/geo', geoRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

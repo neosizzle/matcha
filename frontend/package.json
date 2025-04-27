@@ -32,6 +32,8 @@
 		"vite": "^6.0.0"
 	},
 	"dependencies": {
+		"cities.json": "^1.1.49",
+		"countries-list": "^3.1.1",
 		"daisyui": "^5.0.23",
 		"tailwindcss-animated": "^2.0.0"
 	}

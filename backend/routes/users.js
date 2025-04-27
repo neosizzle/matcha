@@ -16,7 +16,7 @@ router.post('/upload_img', [auth_check_mdw.checkJWT], async function(req, res, n
   // this indirection exists because multer sends 500 errors by default
   upload_img_mdw.uploadImage(req, res, (err) => {
     if (err) {
-      return res.status(400).json({ error: err.message });
+      return res.status(400).json({ 'detail': err.message });
     }
     if (!req.file) {
       return res.status(400).json({ 'detail': 'No file uploaded' });

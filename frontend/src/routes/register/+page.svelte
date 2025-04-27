@@ -14,7 +14,7 @@
 <script lang="ts">
     import Button from "../../components/Button.svelte";
 	import { ToastType } from "../../types/toast";
-    import { showToast } from "../../utils/globalFunctions.svelte";
+    import { deserialize_user_object, showToast } from "../../utils/globalFunctions.svelte";
 	import { user as glob_user } from "../../stores/globalStore.svelte"
     import type { User } from "../../types/user";
 	import { goto } from '$app/navigation'; // if using SvelteKit
@@ -63,7 +63,7 @@
 			register_error = false
 
 			const user_obj = data['data']['user']
-			const user: User = {...user_obj, birthday: new Date(user_obj['birthday']), images: user_obj['images'].split(",").filter((x: string)=>x!='')}
+			const user = deserialize_user_object(user_obj)
 			glob_user.update(() => user)
 			goto("/verify_email")
 		})
