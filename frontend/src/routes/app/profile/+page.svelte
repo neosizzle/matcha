@@ -243,7 +243,6 @@
 		// set global store if OK and store is empty (refresh)
 		if (!local_user)
 		{
-			console.log("writing to store....")
 			const data = await response.json();
 			const user_obj = data['data']
 			const user: User = deserialize_user_object(user_obj)
@@ -267,7 +266,6 @@
 
 		if ("geolocation" in navigator) {
 			navigator.geolocation.getCurrentPosition(async (position) => {
-				// doSomething(position.coords.latitude, position.coords.longitude);
 				let response = await fetch(`http://localhost:3000/geo/coords?lat=${position.coords.latitude}&lon=${position.coords.longitude}`, payload);
 				let body = await response.json();
 				curr_location = body['data'] as Location
@@ -276,8 +274,13 @@
 			// geolocation unavail, do nothing as we already have IP location
 		}
 		
-		// TODO; implement likes and views
-		
+		response = await fetch("http://localhost:3000/matching/likes_matches_views", payload);
+		body = await response.json();
+		const err_msg = body['detail']
+		if (err_msg)
+			return showToast(err_msg, ToastType.ERROR)
+		recent_likes = body['data']['likes']
+		recent_views = body['data']['views']
   	})
 
 </script>

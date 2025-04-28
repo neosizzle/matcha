@@ -6,6 +6,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 
+// TODO add verified and image check when using matching module
 // TODO await session.close(); after every new session (recommended)
 // Database init code
 const init_fn = async () => {
@@ -553,8 +554,9 @@ exports.get_likes = async function({
     `, { id });
     
     const users = result.records.map(record => {
-        const userNode = record.get('liker');
-        return userNode.properties;
+        const user_node = record.get('liker');
+        delete user_node.properties['password']
+        return user_node.properties;
     });
     return users
 }
@@ -574,8 +576,9 @@ exports.get_matches = async function({
     `, { id });
     
     const users = result.records.map(record => {
-        const userNode = record.get('matcher');
-        return userNode.properties;
+        const user_node = record.get('matcher');
+        delete user_node.properties['password']
+        return user_node.properties;
     });
     return users
 }
@@ -595,8 +598,9 @@ exports.get_views = async function({
     `, { id });
     
     const users = result.records.map(record => {
-        const userNode = record.get('viewer');
-        return userNode.properties;
+        const user_node = record.get('viewer');
+        delete user_node.properties['password']
+        return user_node.properties;
     });
     return users
 }
@@ -613,6 +617,10 @@ exports.like_user = async function ({
     existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_liked_id })
     if (existing_user_q.records.length == 0)
         throw new Error(enums.DbErrors.NOTFOUND);
+
+    // you cannot like yourself..
+    if (user_liked_id == user_liker_id)
+        throw new Error(enums.DbErrors.UNAUTHORIZED);
 
     // if user_liked had a 'Blocked' relationship user_liker before or vice versa, throw a DbErrors.Unauthorized
     result = await session.run(`
@@ -636,7 +644,19 @@ exports.like_user = async function ({
     });
 
     if (result.records.length > 0)
-        throw new Error(enums.DbErrors.EXIST);
+        throw new Error(enums.DbErrors.EXISTS);
+
+     // if user_liker had matched user_liked before, throw a DbErrors.EXIST
+     result = await session.run(`
+        MATCH (a:User {id: $liker})-[r:Matched]->(b:User {id: $liked})
+        RETURN r
+    `, {
+        liker: user_liker_id,
+        liked: user_liked_id
+    });
+
+    if (result.records.length > 0)
+        throw new Error(enums.DbErrors.EXISTS);
 
     // if user_liked had liked user_liker before, remove the 'Liked' relationship and replace with 'Matched' relationship
     result = await session.run(`
