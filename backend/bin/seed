@@ -1,12 +1,32 @@
 #!/usr/bin/env node
 
 require('dotenv').config();
-let neo4j = require('neo4j-driver');
-let driver = neo4j.driver("bolt://0.0.0.0:7687", neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD));
+// let neo4j = require('neo4j-driver');
+// let driver = neo4j.driver("bolt://0.0.0.0:7687", neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD));
 const enums = require('../constants/enums')
 const places = require('./places.json'); // Adjust path as needed
+const neo4j_calls = require("../neo4j/calls")
 
-const COUNT = 10
+const COUNT = 600
+const IMAGES = [
+	"public/sample1.png",
+	"public/sample2.png",
+	"public/sample3.png",
+	"public/sample4.png",
+	"public/sample5.png",
+	"public/sample6.png",
+	"public/sample7.png",
+	"public/sample8.png",
+	"public/sample9.png",
+]
+
+const TAGS = [
+	"eat",
+	"sleep",
+	"pickleball",
+	"game",
+	"chess",
+]
 
 function randomChance(probability) {
     // probability should be a number between 0 and 1
@@ -29,6 +49,22 @@ function formatDateToYYMMDD(dateString) {
     return `${year}-${month}-${day}`;
 }
 
+function getRandomItems(arr) {
+    const result = [];
+    const totalToSelect = Math.floor(Math.random() * arr.length) + 1; // Random number between 1 and arr.length
+    const indices = new Set();
+
+    while (indices.size < totalToSelect) {
+        const randomIndex = Math.floor(Math.random() * arr.length);
+        indices.add(randomIndex);
+    }
+
+    for (let index of indices) {
+        result.push(arr[index]);
+    }
+
+    return result;
+}
 
 async function main() {
 	const { default: fetch } = await import('node-fetch');
@@ -44,7 +80,7 @@ async function main() {
 		const place = places[getRandomNumber(places.length)]
 
 		const id = data_user['login']['uuid']
-		const images = "" // TODO handle images
+		const images = getRandomItems(IMAGES).join(",")
 		const email = data_user['email']
 		const password = data_user['login']['password']
 		const iden_42 = ""
@@ -53,7 +89,7 @@ async function main() {
 		const displayname = data_user['login']['username']
 		const birthday = formatDateToYYMMDD(data_user['registered']['date'])
 		const bio = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras faucibus arcu a lectus malesuada luctus. Donec facilisis arcu accumsan, efficitur nulla in, laoreet nisl. Integer vel cursus justo. Phasellus ullamcorper tortor sed commodo ornare. Sed tempor massa id nisl congue interdum."
-		const tags = "" // TODO handle tags
+		const tags = getRandomItems(TAGS).join(",")
 		const enable_auto_location = false
 		const location_manual = `${place.name}, ${place.district}, ${place.state}` // TODO handle location
 		const fame_rating = getRandomNumber(100)
@@ -76,8 +112,18 @@ async function main() {
 			fame_rating,
 			gender
 		}
-		console.log(user_obj)
+		user_objs.push(user_obj)
 	});
+
+	for (let i = 0; i < user_objs.length; i++) {
+		console.log(`seeding user ${i} out of ${COUNT}`)
+		const user_obj = user_objs[i];
+		try {
+			await neo4j_calls.create_new_user(user_obj)
+		} catch (error) {
+			console.log(`seeding user ${i} error, skipping`)
+		}
+	}
 }
 
 main()
