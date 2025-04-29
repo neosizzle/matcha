@@ -702,4 +702,98 @@ exports.like_user = async function ({
     return { matched: false };
 }
 
+exports.block_user = async function({
+    user_blocked_id,
+    user_blocker_id,
+}) {
+    let session = driver.session();
+    let existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_blocker_id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_blocked_id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    // you cannot block yourself..
+    if (user_blocked_id == user_blocker_id)
+        throw new Error(enums.DbErrors.UNAUTHORIZED);
+
+    // If user_blocker already blocked user_blocked, return DbErrors.EXISTS
+    const blocked_check = await session.run(
+        `
+        MATCH (a:User {id: $user_blocker_id})-[r:Blocked]->(b:User {id: $user_blocked_id})
+        RETURN r
+        `,
+        { user_blocker_id, user_blocked_id }
+    );
+    if (blocked_check.records.length > 0)
+        throw new Error(enums.DbErrors.EXISTS);
+
+    // Remove any 'Matched' relationships between the users if any
+    await session.run(
+        `
+        MATCH (a:User {id: $user_blocker_id})-[r:Matched]-(b:User {id: $user_blocked_id})
+        DELETE r
+        `,
+        { user_blocker_id, user_blocked_id }
+    );
+
+    // If user_blocker has 'Liked' relationship woth user_blocked, remove it
+    await session.run(
+        `
+        MATCH (a:User {id: $user_blocker_id})-[r:Liked]->(b:User {id: $user_blocked_id})
+        DELETE r
+        `,
+        { user_blocker_id, user_blocked_id }
+    );
+
+    // Create a 'Blocked' relationship from user_blocker to user_blocked
+    await session.run(
+        `
+        MATCH (a:User {id: $user_blocker_id}), (b:User {id: $user_blocked_id})
+        CREATE (a)-[:Blocked { created_at: datetime() }]->(b)
+        `,
+        { user_blocker_id, user_blocked_id }
+    );
+}
+
+exports.unmatch_user = async function({
+    user_unmatched_id,
+    user_unmatcher_id,
+}) {
+    let session = driver.session();
+    let existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_unmatcher_id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_unmatched_id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    // you cannot unmatch yourself..
+    if (user_unmatched_id == user_unmatcher_id)
+        throw new Error(enums.DbErrors.UNAUTHORIZED);
+
+    // If both users does not have 'Matched' relationship, throw NOTFOUND error
+    const matched_check = await session.run(
+        `
+        MATCH (a:User {id: $user_unmatcher_id})-[r:Matched]-(b:User {id: $user_unmatched_id})
+        RETURN r
+        `,
+        { user_unmatcher_id, user_unmatched_id }
+    );
+    if (matched_check.records.length === 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    // Delete 'Matched' relationship for both users
+    await session.run(
+        `
+        MATCH (a:User {id: $user_unmatcher_id})-[r:Matched]-(b:User {id: $user_unmatched_id})
+        DELETE r
+        `,
+        { user_unmatcher_id, user_unmatched_id }
+    );
+}
+
 // MATCHING module end

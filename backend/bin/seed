@@ -1,0 +1,84 @@
+#!/usr/bin/env node
+
+require('dotenv').config();
+let neo4j = require('neo4j-driver');
+let driver = neo4j.driver("bolt://0.0.0.0:7687", neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD));
+const enums = require('../constants/enums')
+const places = require('./places.json'); // Adjust path as needed
+
+const COUNT = 10
+
+function randomChance(probability) {
+    // probability should be a number between 0 and 1
+    if (probability < 0 || probability > 1) {
+        throw new Error('Probability must be between 0 and 1');
+    }
+    return Math.random() < probability;
+}
+
+function getRandomNumber(n) {
+    return Math.floor(Math.random() * n);
+}
+
+function formatDateToYYMMDD(dateString) {
+    const date = new Date(dateString);
+    const year = String(date.getFullYear()).slice(-2);
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
+
+async function main() {
+	const { default: fetch } = await import('node-fetch');
+	const resp = await fetch(`https://randomuser.me/api/?results=${COUNT}`)
+	const data = await resp.json()
+	if (!resp.ok)
+	{
+		console.log(data);
+		return
+	}
+	let user_objs = []
+	data['results'].forEach(data_user => {
+		const place = places[getRandomNumber(places.length)]
+
+		const id = data_user['login']['uuid']
+		const images = "" // TODO handle images
+		const email = data_user['email']
+		const password = data_user['login']['password']
+		const iden_42 = ""
+		const verified = true
+		const sexuality = enums.Sexuality.BISEXUAL
+		const displayname = data_user['login']['username']
+		const birthday = formatDateToYYMMDD(data_user['registered']['date'])
+		const bio = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras faucibus arcu a lectus malesuada luctus. Donec facilisis arcu accumsan, efficitur nulla in, laoreet nisl. Integer vel cursus justo. Phasellus ullamcorper tortor sed commodo ornare. Sed tempor massa id nisl congue interdum."
+		const tags = "" // TODO handle tags
+		const enable_auto_location = false
+		const location_manual = `${place.name}, ${place.district}, ${place.state}` // TODO handle location
+		const fame_rating = getRandomNumber(100)
+		const gender = randomChance(0.33) ? enums.GENDER.NON_BINARY : data_user['gender'] == 'male' ? enums.GENDER.MALE : enums.GENDER.FEMALE
+
+		const user_obj = {
+			id,
+			images,
+			email,
+			password,
+			iden_42,
+			verified,
+			sexuality,
+			displayname,
+			birthday,
+			bio,
+			tags,
+			enable_auto_location,
+			location_manual,
+			fame_rating,
+			gender
+		}
+		console.log(user_obj)
+	});
+}
+
+main()
+.then(() => console.log("OK"))
