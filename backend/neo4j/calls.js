@@ -95,6 +95,10 @@ exports.get_or_create_user_42 = async function ({
             tags: $tags,
             enable_auto_location: $enable_auto_location,
             location_manual: $location_manual,
+            location_manual_lon: $location_manual_lon,
+            location_manual_lat: $location_manual_lat,
+            location_auto_lon: $location_auto_lon,
+            location_auto_lat: $location_auto_lat,
             fame_rating: $fame_rating,
             gender: $gender
         })
@@ -116,6 +120,10 @@ exports.get_or_create_user_42 = async function ({
             gender: enums.GENDER.NON_BINARY,
             tags: "",
             location_manual: "",
+            location_manual_lon: 999, // max for lon is 180 and lat is 90
+            location_manual_lat: 999,
+            location_auto_lon: 999,
+            location_auto_lat: 999,
         };
         let newuser_query_record = await session.run(query, params);
         const user = newuser_query_record.records[0].get('data').properties
@@ -414,6 +422,10 @@ exports.create_new_user = async function ({
     tags,
     enable_auto_location,
     location_manual,
+    location_manual_lon,
+    location_manual_lat,
+    location_auto_lon,
+    location_auto_lat,
     fame_rating,
     gender
 }) {
@@ -437,6 +449,10 @@ exports.create_new_user = async function ({
             tags: $tags,
             enable_auto_location: $enable_auto_location,
             location_manual: $location_manual,
+            location_manual_lon: $location_manual_lon,
+            location_manual_lat: $location_manual_lat,
+            location_auto_lon: $location_auto_lon,
+            location_auto_lat: $location_auto_lat,
             fame_rating: $fame_rating,
             gender: $gender
         })
@@ -456,6 +472,10 @@ exports.create_new_user = async function ({
         tags,
         enable_auto_location,
         location_manual,
+        location_manual_lon,
+        location_manual_lat,
+        location_auto_lon,
+        location_auto_lat,
         fame_rating,
         gender
     };
@@ -463,7 +483,7 @@ exports.create_new_user = async function ({
 }
 
 // writable fields are 
-// images, sexuality, displayname, bio, enable_auto_location, tags and gender
+// images, sexuality, displayname, bio, enable_auto_location, tags, gender, location and coords
 exports.update_user = async function ({
     id,
     images,
@@ -472,6 +492,10 @@ exports.update_user = async function ({
     bio,
     enable_auto_location,
     location_manual,
+    location_manual_lon,
+    location_manual_lat,
+    location_auto_lon,
+    location_auto_lat,
     tags,
     gender,
     email,
@@ -509,6 +533,10 @@ exports.update_user = async function ({
             tags: $tags,
             enable_auto_location: $enable_auto_location,
             location_manual: $location_manual,
+            location_manual_lon: $location_manual_lon,
+            location_manual_lat: $location_manual_lat,
+            location_auto_lon: $location_auto_lon,
+            location_auto_lat: $location_auto_lat,
             fame_rating: $fame_rating,
             gender: $gender
         }
@@ -528,6 +556,10 @@ exports.update_user = async function ({
         tags, // yes, i am aware user may break the serialization here.
         enable_auto_location,
         location_manual,
+        location_manual_lon,
+        location_manual_lat,
+        location_auto_lon,
+        location_auto_lat,
         fame_rating:  existing_user.fame_rating,
         gender
     };

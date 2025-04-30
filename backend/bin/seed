@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 
 require('dotenv').config();
-// let neo4j = require('neo4j-driver');
-// let driver = neo4j.driver("bolt://0.0.0.0:7687", neo4j.auth.basic(process.env.NEO4J_USERNAME, process.env.NEO4J_PASSWORD));
 const enums = require('../constants/enums')
 const places = require('./places.json'); // Adjust path as needed
 const neo4j_calls = require("../neo4j/calls")
@@ -91,7 +89,11 @@ async function main() {
 		const bio = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras faucibus arcu a lectus malesuada luctus. Donec facilisis arcu accumsan, efficitur nulla in, laoreet nisl. Integer vel cursus justo. Phasellus ullamcorper tortor sed commodo ornare. Sed tempor massa id nisl congue interdum."
 		const tags = getRandomItems(TAGS).join(",")
 		const enable_auto_location = false
-		const location_manual = `${place.name}, ${place.district}, ${place.state}` // TODO handle location
+		const location_manual = `${place.name}, ${place.district}, ${place.state}`
+		const location_manual_lon = place.coords.lon
+		const location_manual_lat = place.coords.lat
+		const location_auto_lon = 999
+		const location_auto_lat = 999
 		const fame_rating = getRandomNumber(100)
 		const gender = randomChance(0.33) ? enums.GENDER.NON_BINARY : data_user['gender'] == 'male' ? enums.GENDER.MALE : enums.GENDER.FEMALE
 
@@ -109,6 +111,10 @@ async function main() {
 			tags,
 			enable_auto_location,
 			location_manual,
+			location_manual_lon,
+			location_manual_lat,
+			location_auto_lon,
+			location_auto_lat,
 			fame_rating,
 			gender
 		}

@@ -27,7 +27,7 @@ router.post('/upload_img', [auth_check_mdw.checkJWT], async function(req, res, n
 
 router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
   const body = req.body;
-  const required_fields = ['images', 'sexuality', 'displayname', 'bio', 'enable_auto_location', 'gender', 'location_manual', 'email', 'birthday']
+  const required_fields = ['images', 'sexuality', 'displayname', 'bio', 'enable_auto_location', 'gender', 'location_manual', 'email', 'birthday', 'location_manual_lon', 'location_manual_lat', 'location_auto_lon', 'location_auto_lat']
 
   if (!required_fields.every(key => key in body))
     return res.status(400).send({'detail': `fields ${required_fields} are required`})
@@ -42,6 +42,10 @@ router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
     const gender = body['gender']
     const email = body['email']
     const location_manual = body['location_manual']
+    const location_manual_lon = body['location_manual_lon']
+    const location_manual_lat = body['location_manual_lat']
+    const location_auto_lon = body['location_auto_lon']
+    const location_auto_lat = body['location_auto_lat']
     const birthday = body['birthday']
     
     const id = req.user.id
@@ -55,17 +59,32 @@ router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
 
     if (!DATE_REGEX.test(birthday))
         return res.status(400).send({'detail': `birthday is invalid, format YYYY-MM-DD is required`})
-    
-      const bd_day = new Date(birthday);
-      const today = new Date();
-      const bd_requirement = today.setFullYear(today.getFullYear() - 18);
-      if (isNaN(bd_day.getTime()))
-        return res.status(400).send({'detail': `birthday is invalid`})
-    
-      if (bd_day < bd_requirement)
-        return res.status(400).send({'detail': `Too old, this platform is made for minors only`})
 
-    const new_user = await neo4j_calls.update_user({id: `${id}`, images, sexuality, displayname, bio, tags, enable_auto_location, gender, location_manual, email, birthday})
+    const bd_day = new Date(birthday);
+    const today = new Date();
+    const bd_requirement = today.setFullYear(today.getFullYear() - 18);
+    if (isNaN(bd_day.getTime()))
+      return res.status(400).send({'detail': `birthday is invalid`})
+  
+    if (bd_day < bd_requirement)
+      return res.status(400).send({'detail': `Too old, this platform is made for minors only`})
+
+    
+    
+    const isValidLatitude = (lat) => (typeof lat === 'number' && lat >= -90 && lat <= 90);
+    const isValidLongitude = (lon) => (typeof lon === 'number' && lon >= -180 && lon <= 180);
+    
+    const change_man_coords = location_manual_lat != req.user.location_manual_lat || location_manual_lon != req.user.location_manual_lon 
+    const change_auto_coords = location_auto_lat != req.user.location_auto_lat || location_auto_lon != req.user.location_auto_lon 
+
+    if (change_man_coords && !(isValidLongitude(parseFloat(location_manual_lon)) && isValidLatitude(parseFloat(location_manual_lat))))
+      return res.status(400).send({'detail': `manual coordinates invalid`})
+
+    if (change_auto_coords && !(isValidLongitude(parseFloat(location_auto_lon)) && isValidLatitude(parseFloat(location_auto_lat))))
+      return res.status(400).send({'detail': `auto coordinates invalid`})
+
+
+    const new_user = await neo4j_calls.update_user({id: `${id}`, images, sexuality, displayname, bio, tags, enable_auto_location, gender, location_manual, location_manual_lat, location_manual_lon, location_auto_lat, location_auto_lon, email, birthday})
 		return res.status(200).send({"data": new_user})
   } catch (error) {
       if (error.message == enums.DbErrors.NOTFOUND)

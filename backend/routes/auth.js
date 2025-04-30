@@ -253,7 +253,7 @@ router.post('/register', async function(req, res) {
 		images: "",
 		email,
 		password: bcrypt.hashSync(password, salt),
-		iden_42: null,
+		iden_42: "",
 		verified: false,
 		sexuality: enums.Sexuality.BISEXUAL,
 		displayname,
@@ -262,6 +262,10 @@ router.post('/register', async function(req, res) {
 		tags: "",
 		enable_auto_location: true,
 		location_manual: "",
+		location_manual_lon: 999, // max for lon is 180 and lat is 90
+        location_manual_lat: 999,
+        location_auto_lon: 999,
+        location_auto_lat: 999,
 		fame_rating: 0,
 		gender: enums.GENDER.NON_BINARY
 	}
