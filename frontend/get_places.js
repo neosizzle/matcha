@@ -655,6 +655,10 @@ const res = my_cities.map((c) => {
 		name: c['name'],
 		district: district_name, 
 		state: state_name,
+    coords: {
+      lat: parseFloat(c['lat']),
+      lon: parseFloat(c['lng'])
+    }
 	}
 })
 
