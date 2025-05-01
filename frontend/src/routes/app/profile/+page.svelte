@@ -19,7 +19,17 @@
 	let gender_copy = $state(Gender.NON_BINARY)
 	let toggle_autolocation_copy = $state(true)
 	let email_copy = $state("")
-	let location_manual_copy = $state("")
+	let location_manual_copy_deser = $state("|999|999") // need to deserialzie this to string for <option/>
+	let location_manual_copy = $derived({
+			name: location_manual_copy_deser.split("|")[0],
+			lat: parseFloat(location_manual_copy_deser.split("|")[1]),
+			lon: parseFloat(location_manual_copy_deser.split("|")[2]),
+	})
+	let location_auto_copy = $state({
+		lon: 999,
+		lat: 999
+	})
+
 	let curr_tag_input = $state("")
 	let recent_views: User[] = $state([])
 	let recent_likes: User[] = $state([])
@@ -44,7 +54,11 @@
 			gender_copy = e.gender
 			toggle_autolocation_copy = e.enable_auto_location
 			email_copy = e.email
-			location_manual_copy = e.location_manual
+			location_manual_copy_deser = `${e.location_manual}|${e.location_manual_lat}|${e.location_manual_lon}`
+			location_auto_copy = {
+				lat: e.location_auto_lat,
+				lon: e.location_auto_lon
+			}
 		}
 	})
 
@@ -85,6 +99,10 @@
 				gender: gender_copy,
 				email: local_user.email,
 				location_manual: local_user.location_manual,
+				location_manual_lat: local_user.location_manual_lat,
+				location_manual_lon: local_user.location_manual_lon,
+				location_auto_lat: local_user.location_auto_lat,
+				location_auto_lon: local_user.location_auto_lon,
 				birthday: birthday_copy
 			}),
 		}
@@ -119,7 +137,11 @@
 				enable_auto_location: toggle_autolocation_copy,
 				gender: local_user.gender,
 				email: email_copy,
-				location_manual: location_manual_copy,
+				location_manual: location_manual_copy.name,
+				location_manual_lat: location_manual_copy.lat,
+				location_manual_lon: location_manual_copy.lon,
+				location_auto_lat: location_auto_copy.lat,
+				location_auto_lon: location_auto_copy.lon,
 				birthday: local_user.birthday.toISOString().split('T')[0]
 			}),
 		}
@@ -179,6 +201,10 @@
 					gender: local_user.gender,
 					email: local_user.email,
 					location_manual: local_user.location_manual,
+					location_manual_lat: local_user.location_manual_lat,
+					location_manual_lon: local_user.location_manual_lon,
+					location_auto_lat: local_user.location_auto_lat,
+					location_auto_lon: local_user.location_auto_lon,
 					birthday: local_user.birthday.toISOString().split('T')[0]
 				}),
 			}
@@ -215,6 +241,10 @@
 					gender: local_user.gender,
 					email: local_user.email,
 					location_manual: local_user.location_manual,
+					location_manual_lat: local_user.location_manual_lat,
+					location_manual_lon: local_user.location_manual_lon,
+					location_auto_lat: local_user.location_auto_lat,
+					location_auto_lon: local_user.location_auto_lon,
 					birthday: local_user.birthday.toISOString().split('T')[0]
 				}),
 			}
@@ -240,14 +270,14 @@
 		if (response.status == 401)
 			window.location.href = "/"
 
+		// I dont like this, too many things can go wrong.. oh well womp womp
+		const user_data = await response.json();
+		let user_obj = user_data['data']
+		let user_des: User = deserialize_user_object(user_obj)
+
 		// set global store if OK and store is empty (refresh)
 		if (!local_user)
-		{
-			const data = await response.json();
-			const user_obj = data['data']
-			const user: User = deserialize_user_object(user_obj)
-			glob_user.update(() => user)
-		}
+			glob_user.update(() => user_des)
 
 		
 		// NOTE: ws should be in own useeffect. check user -> check ws -> connect ws
@@ -263,7 +293,7 @@
 		response = await fetch("http://localhost:3000/geo/ip", payload);
 		let body = await response.json();
 		curr_location = body['data'] as Location
-
+		
 		if ("geolocation" in navigator) {
 			navigator.geolocation.getCurrentPosition(async (position) => {
 				let response = await fetch(`http://localhost:3000/geo/coords?lat=${position.coords.latitude}&lon=${position.coords.longitude}`, payload);
@@ -276,11 +306,44 @@
 		
 		response = await fetch("http://localhost:3000/matching/likes_matches_views", payload);
 		body = await response.json();
-		const err_msg = body['detail']
+		let err_msg = body['detail']
 		if (err_msg)
 			return showToast(err_msg, ToastType.ERROR)
 		recent_likes = body['data']['likes']
 		recent_views = body['data']['views']
+
+		// mm yes, we got lat and long from IP, time to update user
+		const payload2 = {
+			method: 'PUT',
+			credentials: "include" as RequestCredentials,
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				images: user_des.images.join(","),
+				tags: user_des.tags.join(","),
+				sexuality: user_des.sexuality,
+				displayname: user_des.displayname,
+				bio: user_des.bio,
+				enable_auto_location: user_des.enable_auto_location,
+				gender: user_des.gender,
+				email: user_des.email,
+				location_manual: user_des.location_manual,
+				location_manual_lat: user_des.location_manual_lat,
+				location_manual_lon: user_des.location_manual_lon,
+				location_auto_lat: curr_location.latitude,
+				location_auto_lon: curr_location.longitude,
+				birthday: user_des.birthday.toISOString().split('T')[0]
+			}),
+		}
+		let fetch_res = await fetch('http://localhost:3000/users/me', payload2)
+		let data = await fetch_res.json()
+		err_msg = data['detail']
+		if (err_msg)
+			return showToast(err_msg, ToastType.ERROR)
+		user_obj = data['data']
+		user_des = deserialize_user_object(user_obj)
+		glob_user.update(() => user_des)
   	})
 
 </script>
@@ -564,10 +627,10 @@
 		<div class="flex justify-between items-center mb-2">
 			<div class="w-10 sm:w-full">Manual Location</div>
 			<div>
-				<select disabled={toggle_autolocation_copy} bind:value={location_manual_copy} class="select border-pink-300 w-40 sm:w-60">
-					<option disabled selected={location_manual_copy == ''}>Pick a location</option>
+				<select disabled={toggle_autolocation_copy} bind:value={location_manual_copy_deser} class="select border-pink-300 w-40 sm:w-60">
+					<option disabled selected={location_manual_copy.name == ''}>Pick a location</option>
 					{#each CITIES as city }
-						<option value={`${city.name}, ${city.district}, ${city.state}, Malaysia`} selected={location_manual_copy == 'Crimson'} >{`${city.name}, ${city.district}, ${city.state}, Malaysia`}</option>
+						<option value={`${city.name}, ${city.district}, ${city.state}, Malaysia|${city.coords.lat}|${city.coords.lon}`} selected={location_manual_copy.lon == city.coords.lon && location_manual_copy.lat == city.coords.lat } >{`${city.name}, ${city.district}, ${city.state}, Malaysia`}</option>
 					{/each}
 				  </select>
 			</div>
