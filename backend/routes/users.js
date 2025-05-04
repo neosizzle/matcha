@@ -96,4 +96,19 @@ router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
   }
 });
 
+router.get('/:id', [auth_check_mdw.checkJWT], async function(req, res, next) {
+  const id = req.params.id
+
+  try {
+    const user = await neo4j_calls.get_user({id})
+    return res.send({'data': user});
+  } catch (error) {
+    if (error.message == enums.DbErrors.NOTFOUND)
+      return res.status(404).send({'detail': 'user not found'})
+    debug(error)
+    return res.status(500).send({'detail' : "Internal server error"}); 
+  }
+});
+
+
 module.exports = router;
