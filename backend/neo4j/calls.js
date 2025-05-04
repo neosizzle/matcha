@@ -568,6 +568,18 @@ exports.update_user = async function ({
     return res.records[0].get('u').properties
 }
 
+exports.get_user = async function ({
+    id
+}) {
+    let session = driver.session();
+    const existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    const existing_user = existing_user_q.records[0].get('u').properties
+    return existing_user
+}
+
 // USER module end
 
 // MATCHING module start
@@ -826,6 +838,89 @@ exports.unmatch_user = async function({
         `,
         { user_unmatcher_id, user_unmatched_id }
     );
+}
+
+exports.search_with_filters = async function ({
+    sort_key,
+    sort_dir,
+    age_range,
+    fame_range,
+    loc_range,
+    common_tag_range,
+    user_common_tags,
+    user_lat,
+    user_lon,
+    user_id
+}) {
+    let session = driver.session();
+    const [minAge, maxAge] = age_range;
+    const [minFame, maxFame] = fame_range;
+    const [minCommonTag, maxCommonTag] = common_tag_range;
+    const userTagsArray = user_common_tags.split(',').map(tag => tag.trim());
+
+    const direction = sort_dir.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    
+    // destructure loc_range
+    const [min_lat, max_lat] = loc_range[0]
+    const [min_lon, max_lon] = loc_range[1]
+
+    const query = `
+        MATCH (u:User)
+        WHERE 
+            u.birthday IS NOT NULL AND
+            duration.between(date(u.birthday), date()).years >= $minAge AND
+            duration.between(date(u.birthday), date()).years <= $maxAge AND
+            u.fame_rating >= $minFame AND u.fame_rating <= $maxFame AND
+            (
+                (u.enable_auto_location = true AND u.location_auto_lat >= $min_lat AND u.location_auto_lat <= $max_lat AND u.location_auto_lon >= $min_lon AND u.location_auto_lon <= $max_lon) OR 
+                (u.enable_auto_location = false AND u.location_manual_lat >= $min_lat  AND u.location_manual_lat <= $max_lat AND u.location_manual_lon >= $min_lon  AND u.location_manual_lon <= $max_lon)
+            ) AND
+            u.id <> $user_id
+         WITH u,
+            duration.between(date(u.birthday), date()).years AS age,
+            [tag IN split(u.tags, ",") WHERE tag IN $userTags] AS commonTags,
+            CASE 
+                WHEN u.enable_auto_location THEN
+                    sqrt(
+                        ((u.location_auto_lat - $user_lat) * 111.32)^2 +
+                        ((u.location_auto_lon - $user_lon) * 111.32 * cos(radians($user_lat)))^2
+                    )
+                ELSE
+                    sqrt(
+                        ((u.location_manual_lat - $user_lat) * 111.32)^2 +
+                        ((u.location_manual_lon - $user_lon) * 111.32 * cos(radians($user_lat)))^2
+                    )
+            END AS location_diff
+        WHERE size(commonTags) >= $minCommonTag AND size(commonTags) <= $maxCommonTag
+        RETURN u, age, size(commonTags) AS common_tag_count, location_diff
+        ORDER BY ${sort_key === 'age' ? 'age' : 'u.' + sort_key} ${direction}
+        LIMIT 10
+    `;
+
+    const result = await session.run(query, {
+        minAge,
+        maxAge,
+        minFame,
+        maxFame,
+        sortKey: sort_key,
+        minCommonTag,
+        maxCommonTag,
+        userTags: userTagsArray,
+        user_lat,
+        user_lon,
+        min_lat,
+        max_lat,
+        min_lon,
+        max_lon,
+        user_id
+    });
+
+    const users = result.records.map(record => {
+        let user_obj = record.get('u').properties
+        delete user_obj['password']
+        return user_obj
+    });
+    return users;
 }
 
 // MATCHING module end
