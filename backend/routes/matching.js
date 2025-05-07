@@ -29,7 +29,7 @@ router.get('/likes_matches_views', [auth_check_mdw.checkJWT], async function(req
 });
 
 // Search for user based on criteria
-router.get('/search', [auth_check_mdw.checkJWT], async function(req, res, next) {
+router.post('/search', [auth_check_mdw.checkJWT], async function(req, res, next) {
   const body = req.body;
   const required_fields = ['sort_key', 'sort_dir', 'age_range', 'loc_range', 'fame_range', 'common_tag_range']
   const RANGE_ARRAYS = ['age_range', 'fame_range', 'common_tag_range']
@@ -90,7 +90,7 @@ router.get('/search', [auth_check_mdw.checkJWT], async function(req, res, next) 
 });
 
 // Get user suggestions
-router.get('/suggest', [auth_check_mdw.checkJWT], async function(req, res, next) {
+router.post('/suggest', [auth_check_mdw.checkJWT], async function(req, res, next) {
   const body = req.body;
   const required_fields = ['age_range', 'loc_range', 'fame_range', 'common_tag_range']
   const RANGE_ARRAYS = ['age_range', 'fame_range', 'common_tag_range']
@@ -121,8 +121,9 @@ router.get('/suggest', [auth_check_mdw.checkJWT], async function(req, res, next)
     const {latDelta, lonDelta} = kmToLatLonDelta(body['loc_range'], user_latitude)
     const loc_range_delta = [[user_latitude - latDelta, user_latitude + latDelta], [user_lonitude - lonDelta, user_lonitude + lonDelta]]
 
-    // user can further sort the location range at frontend...
-    const users = await neo4j_calls.search_with_filters({
+    // query 3 sets of users based on matching criteria
+    // loaiton prox, # commin tags and fame rating
+    const location_users = await neo4j_calls.search_with_filters({
       sort_dir: "asc",
       sort_key: "loc_range",
       age_range: body['age_range'],
@@ -134,7 +135,40 @@ router.get('/suggest', [auth_check_mdw.checkJWT], async function(req, res, next)
       user_lon: user_lonitude,
       user_id: req.user.id
     })
+
+    const tag_users = await neo4j_calls.search_with_filters({
+      sort_dir: "asc",
+      sort_key: "common_tag_count",
+      age_range: body['age_range'],
+      common_tag_range: body['common_tag_range'],
+      fame_range: body['fame_range'],
+      user_common_tags: req.user.tags,
+      loc_range: loc_range_delta,
+      user_lat: user_latitude,
+      user_lon: user_lonitude,
+      user_id: req.user.id
+    })
+
+    const fame_users = await neo4j_calls.search_with_filters({
+      sort_dir: "asc",
+      sort_key: "fame_rating",
+      age_range: body['age_range'],
+      common_tag_range: body['common_tag_range'],
+      fame_range: body['fame_range'],
+      user_common_tags: req.user.tags,
+      loc_range: loc_range_delta,
+      user_lat: user_latitude,
+      user_lon: user_lonitude,
+      user_id: req.user.id
+    })
     
+    // right now just naively concat the multiple criteria..
+    // possible improvement would be using statistical resampling with custom weights
+    const merged = [...location_users, ...tag_users, ...fame_users];
+    const users = [
+      ...new Map(merged.map(item => [item.id, item])).values()
+    ];
+
     res.status(200).send({'data': users})
 
   } catch (error) {

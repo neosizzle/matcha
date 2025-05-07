@@ -840,6 +840,7 @@ exports.unmatch_user = async function({
     );
 }
 
+// TODO: add gender filter
 exports.search_with_filters = async function ({
     sort_key,
     sort_dir,
@@ -876,6 +877,10 @@ exports.search_with_filters = async function ({
                 (u.enable_auto_location = false AND u.location_manual_lat >= $min_lat  AND u.location_manual_lat <= $max_lat AND u.location_manual_lon >= $min_lon  AND u.location_manual_lon <= $max_lon)
             ) AND
             u.id <> $user_id
+
+        OPTIONAL MATCH (currentUser:User {id: $user_id})-[r:Liked|Matched|Blocked]->(u)
+        WHERE r IS NULL
+
          WITH u,
             duration.between(date(u.birthday), date()).years AS age,
             [tag IN split(u.tags, ",") WHERE tag IN $userTags] AS commonTags,
@@ -894,7 +899,7 @@ exports.search_with_filters = async function ({
         WHERE size(commonTags) >= $minCommonTag AND size(commonTags) <= $maxCommonTag
         RETURN u, age, size(commonTags) AS common_tag_count, location_diff
         ORDER BY ${sort_key === 'age' ? 'age' : 'u.' + sort_key} ${direction}
-        LIMIT 10
+        LIMIT 100
     `;
 
     const result = await session.run(query, {

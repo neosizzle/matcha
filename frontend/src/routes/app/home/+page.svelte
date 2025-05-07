@@ -1,23 +1,226 @@
-<script>
+<script lang="ts">
     import Button from "../../../components/Button.svelte";
+	import { onMount } from "svelte";
+	import { user as glob_user } from "../../../stores/globalStore.svelte"
+	import { type User } from "../../../types/user";
+    import { calculate_age_from_date, deserialize_user_object } from "../../../utils/globalFunctions.svelte";
+    import type { Location } from "../../../types/location";
+	import { ToastType } from "../../../types/toast";
+    import { showToast } from "../../../utils/globalFunctions.svelte";
+    import UserSearchSkeleton from "../../../components/UserSearchSkeleton.svelte";
 
-	let curr_mode = 0
+	let curr_mode = $state(1)
 	let sort_keys = [
 		{name: "Location", value: "location_diff"},
 		{name: "Age", value: "age"},
 		{name: "Fame Rating", value: "fame_rating"},
 		{name: "# common tags", value: "common_tag_count"},
 	]
-	let curr_sort_key = sort_keys[0]
+	let sort_key = $state(sort_keys[0])
 	let sort_dirs = [
 		{name: "Ascending", value: "asc"},
 		{name: "Descending", value: "desc"},
 	]
-	let curr_sort_dir = sort_dirs[0]
-	let curr_age_range = [0, 100]
+	let sort_dir = $state(sort_dirs[0])
+	let age_range = [0, 100]
 	let fame_range = [0, 100]
 	let common_tag_range = [0, 100]
-	let loc_diff = 10
+	let loc_range = $state(10)
+	let save_changes_disabled = $state(false)
+	let browse_users: User[] = $state([])
+	let search_users: User[] = $state([])
+
+	let local_user: User | null = $state(null); 
+	glob_user.subscribe(e => {
+		if (e)
+			local_user = e
+	})
+
+	async function fetch_users() {
+		if (!local_user)
+			return
+
+		save_changes_disabled = true
+
+		// get search users
+		const payload = {
+			method: 'POST',
+			credentials: "include" as RequestCredentials,
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				sort_key: sort_key.value,
+				sort_dir: sort_dir.value,
+				age_range: age_range,
+				loc_range: loc_range,
+				fame_range,
+				common_tag_range,
+			}),
+		}
+		let fetch_res = await fetch('http://localhost:3000/matching/search', payload)
+		let data = await fetch_res.json()
+		let err_msg = data['detail']
+		if (err_msg)
+		{
+			save_changes_disabled = false
+			return showToast(err_msg, ToastType.ERROR)
+		}
+		let search_users_ser = data['data']
+		let search_users_deser: User[] = []
+		search_users_ser.forEach((ser: {[key: string]: any}) => {
+			search_users_deser.push(deserialize_user_object(ser))	
+		});
+		search_users = search_users_deser
+
+		// get suggest users
+		const payload2 = {
+			method: 'POST',
+			credentials: "include" as RequestCredentials,
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				age_range: age_range,
+				loc_range: loc_range,
+				fame_range,
+				common_tag_range,
+			}),
+		}
+		fetch_res = await fetch('http://localhost:3000/matching/suggest', payload2)
+		data = await fetch_res.json()
+		err_msg = data['detail']
+		if (err_msg)
+		{
+			save_changes_disabled = false
+			return showToast(err_msg, ToastType.ERROR)
+		}
+		let browse_users_unsorted_ser = data['data']
+		let browse_users_unsorted_deser: User[] = []
+		search_users_ser.forEach((ser: {[key: string]: any}) => {
+			browse_users_unsorted_deser.push(deserialize_user_object(ser))	
+		});
+		let browse_users_unsorted: User[] = browse_users_unsorted_deser
+		browse_users_unsorted.sort((a, b) => {
+			if (!local_user)
+				return 0
+			const mult = sort_dir.value == "asc" ? 1 : -1;
+
+			const get_age = (birthday: Date) => new Date().getFullYear() - birthday.getFullYear() - (new Date() < new Date(birthday.setFullYear(new Date().getFullYear())) ? 1 : 0);
+			const get_common = (a: string[], b: string[]) => a.filter(item => b.includes(item)).length;
+			const get_loc_diff = (user: User, userLat: number, userLon: number) => {
+				const latDiff = (user.enable_auto_location 
+					? user.location_auto_lat - userLat 
+					: user.location_manual_lat - userLat) * 111.32;
+
+				const lonDiff = (user.enable_auto_location 
+					? user.location_auto_lon - userLon 
+					: user.location_manual_lon - userLon) * 111.32 * Math.cos(userLat * Math.PI / 180);
+
+				return Math.sqrt(latDiff ** 2 + lonDiff ** 2);
+			}
+
+
+			if (sort_key.value == "age")
+				return (get_age(a.birthday) - get_age(b.birthday)) * mult
+			if (sort_key.value == "fame_rating")
+				return (a.fame_rating - b.fame_rating) * mult
+			if (sort_key.value == "fame_rating")
+				return (get_common(local_user.tags, a.tags ) - get_common(local_user.tags, b.tags )) * mult
+			const [a_userLat, a_userLon] = a.enable_auto_location
+				? [a.location_auto_lat, a.location_auto_lon]
+				: [a.location_manual_lat, a.location_manual_lon];
+
+			const [b_userLat, b_userLon] = b.enable_auto_location
+				? [b.location_auto_lat, b.location_auto_lon]
+				: [b.location_manual_lat, b.location_manual_lon];
+			return (get_loc_diff(local_user, a_userLat, a_userLon) - get_loc_diff(local_user, b_userLat, b_userLon)) * mult
+
+		})
+		browse_users = browse_users_unsorted
+		save_changes_disabled = false
+	}
+
+	onMount(async () => {
+		// haih... do a quick auth check
+		const payload = {
+				method: 'GET',
+				credentials: "include" as RequestCredentials,
+			}
+		let response = await fetch("http://localhost:3000/users/me", payload);
+		if (response.status == 401)
+			window.location.href = "/"
+
+		// I dont like this, too many things can go wrong.. oh well womp womp
+		const user_data = await response.json();
+		let user_obj = user_data['data']
+		let user_des: User = deserialize_user_object(user_obj)
+
+		// set global store if OK and store is empty (refresh)
+		if (!local_user)
+			glob_user.update(() => user_des)
+
+		
+		// NOTE: ws should be in own useeffect. check user -> check ws -> connect ws
+		// TEST WS
+		// const ws_conn_options = {
+		// 	withCredentials: true
+		// }
+		// const socket = io("http://localhost:3000", ws_conn_options);
+		// socket.on("message", (msg) => {
+		// 	console.log('message: ' + msg)
+		// });
+
+		response = await fetch("http://localhost:3000/geo/ip", payload);
+		let body = await response.json();
+		let curr_location: Location = body['data']
+		
+		if ("geolocation" in navigator) {
+			navigator.geolocation.getCurrentPosition(async (position) => {
+				let response = await fetch(`http://localhost:3000/geo/coords?lat=${position.coords.latitude}&lon=${position.coords.longitude}`, payload);
+				let body = await response.json();
+				curr_location = body['data'] as Location
+			});
+		} else {
+			// geolocation unavail, do nothing as we already have IP location
+		}
+
+		// mm yes, we got lat and long from IP, time to update user
+		const payload2 = {
+			method: 'PUT',
+			credentials: "include" as RequestCredentials,
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				images: user_des.images.join(","),
+				tags: user_des.tags.join(","),
+				sexuality: user_des.sexuality,
+				displayname: user_des.displayname,
+				bio: user_des.bio,
+				enable_auto_location: user_des.enable_auto_location,
+				gender: user_des.gender,
+				email: user_des.email,
+				location_manual: user_des.location_manual,
+				location_manual_lat: user_des.location_manual_lat,
+				location_manual_lon: user_des.location_manual_lon,
+				location_auto_lat: curr_location.latitude,
+				location_auto_lon: curr_location.longitude,
+				birthday: user_des.birthday.toISOString().split('T')[0]
+			}),
+		}
+		let fetch_res = await fetch('http://localhost:3000/users/me', payload2)
+		let data = await fetch_res.json()
+		let err_msg = data['detail']
+		if (err_msg)
+			return showToast(err_msg, ToastType.ERROR)
+		user_obj = data['data']
+		user_des = deserialize_user_object(user_obj)
+		glob_user.update(() => user_des)
+
+		// populate initial data
+		await fetch_users()
+  	})
 
 </script>
 
@@ -47,19 +250,20 @@
 						<div class="flex items-center text-semibold ">
 							Sort by
 						</div>
-	
-						<details class="dropdown">
-							<summary class="btn m-1">{curr_sort_key.name}</summary>
+
+						<div class="dropdown">
+							<div tabindex="0" role="button" class={`btn m-1`}>{sort_key.name}</div>
 							<ul class="menu dropdown-content bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm">
-								{#each sort_keys as sort_key}
+								{#each sort_keys as curr_sort_key}
 									<li>
-										<button onclick={() => curr_sort_key = sort_key}>
-											{sort_key.name}
+										<button onclick={() => sort_key = curr_sort_key}>
+											{curr_sort_key.name}
 										</button>
 									</li>
 								{/each}
 							</ul>
-						</details>
+						</div>
+	
 					</div>
 	
 					<div class="flex justify-between mb-2">
@@ -67,18 +271,19 @@
 							Sort direction
 						</div>
 	
-						<details class="dropdown">
-							<summary class="btn m-1">{curr_sort_dir.name}</summary>
+						<div class="dropdown">
+							<div tabindex="0" role="button" class={`btn m-1`}>{sort_dir.name}</div>
 							<ul class="menu dropdown-content bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm">
-								{#each sort_dirs as sort_dir}
+								{#each sort_dirs as curr_sort_dir}
 									<li>
-										<button onclick={() => curr_sort_dir = sort_dir}>
-											{sort_dir.name}
+										<button onclick={() => sort_dir = curr_sort_dir}>
+											{curr_sort_dir.name}
 										</button>
 									</li>
 								{/each}
 							</ul>
-						</details>
+						  </div>
+						  
 					</div>
 	
 					<div class="flex justify-between mb-2">
@@ -92,7 +297,7 @@
 								class="input"
 								min="1"
 								max="100"
-								bind:value={curr_age_range[0]}
+								bind:value={age_range[0]}
 							/>
 							<div class="divider divider-horizontal text-sm"> </div>
 							<input
@@ -100,7 +305,7 @@
 								class="input"
 								min="1"
 								max="100"
-								bind:value={curr_age_range[1]}
+								bind:value={age_range[1]}
 							/>
 						</div>
 					</div>
@@ -163,20 +368,69 @@
 							class="input w-20"
 							min="1"
 							max="100"
-							bind:value={loc_diff}
+							bind:value={loc_range}
 						/>
 					</div>
 	
 	
-				<Button>Apply filters</Button>
+				<Button isLoading={save_changes_disabled} onclick={fetch_users}>Apply filters</Button>
 				</div>
 			</div>
 		  </div>
 	</div>
 
 
-	Asdasd
+	<!--Search-->
+	<div
+	class={` ${curr_mode == 1? 'hidden' : ''}`}
+	>
+	<!-- <div>
+		{search_users.length}
+	</div> -->
+	{#if save_changes_disabled}
+		<UserSearchSkeleton/>
+		{:else}
+			{#each search_users as user}
+				<!-- <div>{JSON.stringify(user)}</div> -->
+				<div class="card bg-base-100 w-full shadow-sm mb-2">
+					<figure>
+					  <img
+						src={`http://localhost:3000/${user.images[0]}`}
+						alt="Shoes" />
+					</figure>
+					<div class="card-body">
+					  <h2 class="card-title">{user.displayname}, {calculate_age_from_date(user.birthday)}</h2>
+					  <p>{user.bio}</p>
 
+					  <div class="card-actions justify-end items-center font-lg">
+						<svg xmlns="http://www.w3.org/2000/svg" fill="yellow" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="size-6">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+						</svg>
+						{user.fame_rating}
+					  </div>
+					</div>
+				  </div>
+
+			{/each}
+	{/if}
+	</div>
+
+	<!--Browse-->
+	<div
+	class={` ${curr_mode == 0? 'hidden' : ''}`}
+	>
+		<!-- <div>
+			{browse_users.length}
+		</div> -->
+		{#if save_changes_disabled}
+		Loading..
+		{:else}
+			{#each browse_users as user}
+				<div>{JSON.stringify(user)}</div>
+			{/each}
+		{/if}
+
+	</div>
 </div>
   
   
