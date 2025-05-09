@@ -21,6 +21,12 @@
 		{name: "Ascending", value: "asc"},
 		{name: "Descending", value: "desc"},
 	]
+	let genders = [
+		{name: "Male", value: "m"},
+		{name: "Female", value: "f"},
+		{name: "Non binary", value: "nb"},
+	]
+	let selected_genders: string[] = $state(["nb"])
 	let sort_dir = $state(sort_dirs[0])
 	let age_range = [0, 100]
 	let fame_range = [0, 100]
@@ -35,6 +41,40 @@
 		if (e)
 			local_user = e
 	})
+
+// 	function toggleOption(option: {name:string, value:string}) {
+// 		if (selected_genders.includes(option)) {
+// 			selected_genders = selected_genders.filter(o => o !== option);
+// 		} else {
+// 			selected_genders = [...selected_genders, option];
+// 		}
+//   }
+
+	function get_gender_key_by_val(genders: {name: string, value: string}[], selected_genders: string[]) {
+		let res = "";
+		for (let i = 0; i < selected_genders.length; i++) {
+			const gender_obj = genders.find((element) => {
+				return element.value == selected_genders[i]
+			});
+			if (!gender_obj)
+				continue
+
+			res += gender_obj.name
+			res += ", "
+		}
+		if (res.length > 2)
+			res = res.slice(0, -2);
+		return res
+	}
+
+	function gender_change(event: Event) {
+		const target = event.target as HTMLInputElement;
+		const val = target.value
+		if (!selected_genders.includes(val))
+			selected_genders.push(val)
+		else
+			selected_genders = selected_genders.filter(item => item != val);
+  	}
 
 	async function fetch_users() {
 		if (!local_user)
@@ -56,6 +96,7 @@
 				loc_range: loc_range,
 				fame_range,
 				common_tag_range,
+				genders: selected_genders,
 			}),
 		}
 		let fetch_res = await fetch('http://localhost:3000/matching/search', payload)
@@ -85,6 +126,7 @@
 				loc_range: loc_range,
 				fame_range,
 				common_tag_range,
+				genders: selected_genders,
 			}),
 		}
 		fetch_res = await fetch('http://localhost:3000/matching/suggest', payload2)
@@ -283,6 +325,29 @@
 								{/each}
 							</ul>
 						  </div>
+					</div>
+
+					<div class="flex justify-between mb-2">
+						<div class="flex items-center text-semibold ">
+							Genders
+						</div>
+	
+						<div class="dropdown dropdown-end">
+							<div tabindex="0" role="button" class={`btn m-1`}>{get_gender_key_by_val(genders, selected_genders)}</div>
+							<ul class="menu dropdown-content bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm">
+								{#each genders as gender}
+									<li>
+										<label class="label">
+											<input type="checkbox" value={gender.value} checked={selected_genders.includes(gender.value)} class="checkbox" onchange={gender_change} />
+											{gender.name}
+										  </label>
+										<!-- <button onclick={() => sort_dir = curr_sort_dir}>
+											{curr_sort_dir.name}
+										</button> -->
+									</li>
+								{/each}
+							</ul>
+						  </div>
 						  
 					</div>
 	
@@ -391,7 +456,6 @@
 		<UserSearchSkeleton/>
 		{:else}
 			{#each search_users as user}
-				<!-- <div>{JSON.stringify(user)}</div> -->
 				<div class="card bg-base-100 w-full shadow-sm mb-2">
 					<figure>
 					  <img
@@ -399,7 +463,7 @@
 						alt="Shoes" />
 					</figure>
 					<div class="card-body">
-					  <h2 class="card-title">{user.displayname}, {calculate_age_from_date(user.birthday)}</h2>
+					  <h2 class="card-title">{user.displayname}, {get_gender_key_by_val(genders, [user.gender])}, {calculate_age_from_date(user.birthday)}</h2>
 					  <p>{user.bio}</p>
 
 					  <div class="card-actions justify-end items-center font-lg">

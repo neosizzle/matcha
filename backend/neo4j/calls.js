@@ -840,7 +840,6 @@ exports.unmatch_user = async function({
     );
 }
 
-// TODO: add gender filter
 exports.search_with_filters = async function ({
     sort_key,
     sort_dir,
@@ -848,6 +847,7 @@ exports.search_with_filters = async function ({
     fame_range,
     loc_range,
     common_tag_range,
+    genders,
     user_common_tags,
     user_lat,
     user_lon,
@@ -876,6 +876,7 @@ exports.search_with_filters = async function ({
                 (u.enable_auto_location = true AND u.location_auto_lat >= $min_lat AND u.location_auto_lat <= $max_lat AND u.location_auto_lon >= $min_lon AND u.location_auto_lon <= $max_lon) OR 
                 (u.enable_auto_location = false AND u.location_manual_lat >= $min_lat  AND u.location_manual_lat <= $max_lat AND u.location_manual_lon >= $min_lon  AND u.location_manual_lon <= $max_lon)
             ) AND
+            u.gender IN $genders AND
             u.id <> $user_id
 
         OPTIONAL MATCH (currentUser:User {id: $user_id})-[r:Liked|Matched|Blocked]->(u)
@@ -910,6 +911,7 @@ exports.search_with_filters = async function ({
         sortKey: sort_key,
         minCommonTag,
         maxCommonTag,
+        genders,
         userTags: userTagsArray,
         user_lat,
         user_lon,

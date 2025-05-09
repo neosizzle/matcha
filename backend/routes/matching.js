@@ -31,7 +31,7 @@ router.get('/likes_matches_views', [auth_check_mdw.checkJWT], async function(req
 // Search for user based on criteria
 router.post('/search', [auth_check_mdw.checkJWT], async function(req, res, next) {
   const body = req.body;
-  const required_fields = ['sort_key', 'sort_dir', 'age_range', 'loc_range', 'fame_range', 'common_tag_range']
+  const required_fields = ['sort_key', 'sort_dir', 'age_range', 'loc_range', 'fame_range', 'common_tag_range', 'genders']
   const RANGE_ARRAYS = ['age_range', 'fame_range', 'common_tag_range']
   const ALLOWED_SORT_KEYS = ['age', 'location_diff', 'fame_rating', 'common_tag_count']
   const ALLOWED_SORT_DIR = ['asc', 'desc']
@@ -57,6 +57,11 @@ router.post('/search', [auth_check_mdw.checkJWT], async function(req, res, next)
   if (!Number.isInteger(body['loc_range']))
     return res.status(400).send({'detail': `loc_range needs to be a number`})
 
+  for (let i = 0; i < body['genders'].length; i++) {
+    const gender = body['genders'][i];
+    if (!Object.values(enums.GENDER).includes(gender))
+      return res.status(400).send({'detail': `${gender} not valid`})
+  }
 
   try {
     // convert location range from km to degrees.
@@ -74,6 +79,7 @@ router.post('/search', [auth_check_mdw.checkJWT], async function(req, res, next)
       age_range: body['age_range'],
       common_tag_range: body['common_tag_range'],
       fame_range: body['fame_range'],
+      genders: body['genders'],
       user_common_tags: req.user.tags,
       loc_range: loc_range_delta,
       user_lat: user_latitude,
@@ -92,7 +98,7 @@ router.post('/search', [auth_check_mdw.checkJWT], async function(req, res, next)
 // Get user suggestions
 router.post('/suggest', [auth_check_mdw.checkJWT], async function(req, res, next) {
   const body = req.body;
-  const required_fields = ['age_range', 'loc_range', 'fame_range', 'common_tag_range']
+  const required_fields = ['age_range', 'loc_range', 'fame_range', 'common_tag_range', 'genders']
   const RANGE_ARRAYS = ['age_range', 'fame_range', 'common_tag_range']
 
   if (!required_fields.every(key => key in body))
@@ -110,6 +116,11 @@ router.post('/suggest', [auth_check_mdw.checkJWT], async function(req, res, next
   if (!Number.isInteger(body['loc_range']))
     return res.status(400).send({'detail': `loc_range needs to be a number`})
 
+  for (let i = 0; i < body['genders'].length; i++) {
+    const gender = body['genders'][i];
+    if (!Object.values(enums.GENDER).includes(gender))
+      return res.status(400).send({'detail': `${gender} not valid`})
+  }
 
   try {
     // convert location range from km to degrees.
@@ -129,6 +140,7 @@ router.post('/suggest', [auth_check_mdw.checkJWT], async function(req, res, next
       age_range: body['age_range'],
       common_tag_range: body['common_tag_range'],
       fame_range: body['fame_range'],
+      genders: body['genders'],
       user_common_tags: req.user.tags,
       loc_range: loc_range_delta,
       user_lat: user_latitude,
@@ -142,6 +154,7 @@ router.post('/suggest', [auth_check_mdw.checkJWT], async function(req, res, next
       age_range: body['age_range'],
       common_tag_range: body['common_tag_range'],
       fame_range: body['fame_range'],
+      genders: body['genders'],
       user_common_tags: req.user.tags,
       loc_range: loc_range_delta,
       user_lat: user_latitude,
@@ -155,6 +168,7 @@ router.post('/suggest', [auth_check_mdw.checkJWT], async function(req, res, next
       age_range: body['age_range'],
       common_tag_range: body['common_tag_range'],
       fame_range: body['fame_range'],
+      genders: body['genders'],
       user_common_tags: req.user.tags,
       loc_range: loc_range_delta,
       user_lat: user_latitude,
