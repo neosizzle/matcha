@@ -877,6 +877,7 @@ exports.search_with_filters = async function ({
                 (u.enable_auto_location = false AND u.location_manual_lat >= $min_lat  AND u.location_manual_lat <= $max_lat AND u.location_manual_lon >= $min_lon  AND u.location_manual_lon <= $max_lon)
             ) AND
             u.gender IN $genders AND
+            size(u.images) >= 1 AND
             u.id <> $user_id
 
         OPTIONAL MATCH (currentUser:User {id: $user_id})-[r:Liked|Matched|Blocked]->(u)

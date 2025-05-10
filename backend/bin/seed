@@ -79,7 +79,7 @@ async function main() {
 
 		const id = data_user['login']['uuid']
 		const images = getRandomItems(IMAGES).join(",")
-		const email = data_user['email']
+		const email = `${data_user['login']['uuid']}${data_user['email']}`
 		const password = data_user['login']['password']
 		const iden_42 = ""
 		const verified = true

@@ -3,6 +3,8 @@ var debug = require('debug')('backend:ws');
 const neo4j_calls = require("../neo4j/calls")
 const enums = require("../constants/enums")
 
+// TODO: global userid to socketid map
+
 const handle_ws = async (socket) => {
     let user = null
 
