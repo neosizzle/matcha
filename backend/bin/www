@@ -31,7 +31,7 @@ const wscorsOptions = {
 };
 
 const io = socketIo(server, { cors: wscorsOptions });
-io.on('connection', handle_ws);
+io.on('connection', (socket) => handle_ws(socket, io));
 
 
 /**

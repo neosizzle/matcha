@@ -636,8 +636,9 @@ exports.get_views = async function({
         throw new Error(enums.DbErrors.NOTFOUND);
     
     const result = await session.run(`
-        MATCH (viewer:User)-[:Viewed]->(viewed:User {id: $id})
+        MATCH (viewer:User)-[r:Viewed]->(viewed:User {id: $id})
         RETURN viewer
+        ORDER BY r.updated_at DESC
         LIMIT 5
     `, { id });
     
@@ -722,28 +723,97 @@ exports.like_user = async function ({
         });
 
         // Create 'Matched' relationships both ways
-        await session.run(`
+        const matched_user_q = await session.run(`
             MATCH (a:User {id: $liker}), (b:User {id: $liked})
             CREATE (a)-[:Matched { created_at: datetime() }]->(b),
                    (b)-[:Matched { created_at: datetime() }]->(a)
+            RETURN b as u
         `, {
             liker: user_liker_id,
             liked: user_liked_id
         });
-
-        return { matched: true };
+        const matched_user = matched_user_q.records[0].get('u').properties
+        delete matched_user['password']
+        return { matched: true, user: matched_user };
     }
 
     // create like
-    await session.run(`
+    const liked_user_q = await session.run(`
         MATCH (a:User {id: $liker}), (b:User {id: $liked})
         CREATE (a)-[:Liked { created_at: datetime() }]->(b)
     `, {
         liker: user_liker_id,
         liked: user_liked_id
     });
+    const liked_user = liked_user_q.records[0].get('u').properties
+    delete matched_user['password']
 
-    return { matched: false };
+    return { matched: false, user: liked_user };
+}
+
+exports.view_user = async function ({
+    user_viewer_id,
+    user_viewed_id
+}) {
+    let session = driver.session();
+    let existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_viewer_id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_viewed_id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    // you cannot view yourself..
+    if (user_viewed_id == user_viewer_id)
+        throw new Error(enums.DbErrors.UNAUTHORIZED);
+
+    // if user_viewer had viewed user_viewed before, update the relationship updated time. Else, create a new relationship
+    await session.run(`
+        MERGE (a:User {id: $viewer})
+        MERGE (b:User {id: $viewed})
+        MERGE (a)-[r:Viewed]->(b)
+        ON CREATE SET r.created_at = datetime(), r.updated_at = datetime()
+        ON MATCH SET r.updated_at = datetime()
+        RETURN r
+    `, {
+        viewer: user_viewer_id,
+        viewed: user_viewed_id
+    });
+}
+
+exports.unlike_user = async function ({
+    user_unliker_id,
+    user_unliked_id
+}) {
+    let session = driver.session();
+    let existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_unliker_id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_unliked_id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    // you cannot unlike yourself..
+    if (user_unliked_id == user_unliker_id)
+        throw new Error(enums.DbErrors.UNAUTHORIZED);
+
+    // if the user_unliker did not like user_unliked_in the first place, throw notfound error, or just delete implicitly
+    let result = await session.run(`
+        MATCH (a:User {id: $unliker})-[r:Liked]->(b:User {id: $unliked})
+        DELETE r
+        RETURN r
+    `, {
+        unliker: user_unliker_id,
+        unliked: user_unliked_id
+    });
+
+    console.log(result.records)
+
+    if (result.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
 }
 
 exports.block_user = async function({
