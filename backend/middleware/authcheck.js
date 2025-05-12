@@ -2,7 +2,6 @@ const { DbErrors } = require("../constants/enums");
 const neo4j_calls = require("../neo4j/calls")
 var debug = require('debug')('middleware:authcheck');
 
-
 exports.checkJWT = async (req, res, next) => {
 	const token = req.cookies.token;
   

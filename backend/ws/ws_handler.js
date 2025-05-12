@@ -1,12 +1,16 @@
 const { WScheckJWT } = require("../middleware/authcheck");
+const { checkProfileWs } = require("../middleware/interactioncheck");
 var debug = require('debug')('backend:ws');
 const neo4j_calls = require("../neo4j/calls")
+const sqlite_calls = require("../sqlite/calls")
 const enums = require("../constants/enums")
+const { createClient } = require('redis');
+const redis_client = createClient();
 
-// TODO: global userid to socketid map
+const PING_FREQUENCY_MS = 5000
+
 let uid_sockid_map = new Map();
 let sockid_uid_map = new Map();
-
 
 const handle_ws = async (socket, io) => {
     let user = null
@@ -15,6 +19,7 @@ const handle_ws = async (socket, io) => {
     debug('A user connected');
     try {
         user = await WScheckJWT(socket)
+        delete user['password']
         socket_id = socket.id
         uid_sockid_map.set(user.id, socket_id)
         sockid_uid_map.set(socket_id, user.id)
@@ -26,6 +31,21 @@ const handle_ws = async (socket, io) => {
   
     socket.emit('message', user['id']);
 
+    // active heartbeat
+    const interval = setInterval(() => {
+      socket.emit('notify_ping', Date.now());
+    }, PING_FREQUENCY_MS);
+
+    // pong event
+    socket.on('emit_pong', async () => {
+      const curr_time = Date.now()
+      
+      // write to redis
+      if (!redis_client.isOpen)
+        await redis_client.connect()
+      await redis_client.set(user.id, curr_time)
+    })
+
     // like event 
     socket.on('emit_like', async (msg, ack) => {
       try {
@@ -33,7 +53,9 @@ const handle_ws = async (socket, io) => {
         const required_fields = ['user_id']
 
         if (!required_fields.every(key => key in body))
-          return socket.emit('message', {'detail': `fields ${required_fields} are required`});
+          return ack({'detail': `fields ${required_fields} are required`})
+
+        await checkProfileWs(user.id)
 
         const user_liked_id = body['user_id']
         const user_liker_id = user['id']
@@ -73,7 +95,7 @@ const handle_ws = async (socket, io) => {
         const required_fields = ['user_id']
 
         if (!required_fields.every(key => key in body))
-          return socket.emit('message', {'detail': `fields ${required_fields} are required`});
+          return ack({'detail': `fields ${required_fields} are required`})
 
         const user_viewed_id = body['user_id']
         const user_viewer_id = user['id']
@@ -109,7 +131,7 @@ const handle_ws = async (socket, io) => {
         const required_fields = ['user_id']
 
         if (!required_fields.every(key => key in body))
-          return socket.emit('message', {'detail': `fields ${required_fields} are required`});
+          return ack({'detail': `fields ${required_fields} are required`})
 
         const user_unliked_id = body['user_id']
         const user_unliker_id = user['id']
@@ -138,6 +160,54 @@ const handle_ws = async (socket, io) => {
       }
     });
 
+    // emit chat
+    socket.on('emit_chat', async (msg, ack) => {
+      try {
+        const body = JSON.parse(msg)
+        const required_fields = ['user_id', 'contents']
+
+        if (!required_fields.every(key => key in body))
+          return ack({'detail': `fields ${required_fields} are required`})
+
+        const to_user_id = body['user_id']
+        const contents = body['contents']
+        const created_at = Date.now();
+        
+        // check if both of them are matched
+        const is_matched = await neo4j_calls.check_matched({
+          user1_id: user.id,
+          user2_id: to_user_id
+        })
+        if (!is_matched)
+          return ack({
+            detail: "users not matched"
+          });
+
+        const added_chat = sqlite_calls.create_chat.get(user.id, to_user_id, contents, created_at)
+        const opp_socketid = uid_sockid_map.get(to_user_id)
+
+        io.to(opp_socketid).emit('notify_chat', {'data': {
+          user: user,
+          contents
+        }})
+
+        // send ack back to caller
+        ack({
+          data: added_chat
+        });
+
+      } catch (error) {
+        // any errors, send back to user
+        if (error.message == enums.DbErrors.NOTFOUND)
+          return ack({'detail': "user not found"})
+        if (error.message == enums.DbErrors.UNAUTHORIZED)
+          return ack({'detail': "Unable to unlike user"})
+        debug(error)
+        ack({
+          detail: `${error}`
+        });
+      }
+    });
     // Handle message from the client
     socket.on('message', async (msg) => {
       socket.emit('message', msg); // Send message back to the sender
@@ -148,6 +218,7 @@ const handle_ws = async (socket, io) => {
     socket.on('disconnect', () => {
       uid_sockid_map.delete(user.id)
       sockid_uid_map.delete(socket_id)
+      clearInterval(interval)
       console.log('A user disconnected');
     });
   };

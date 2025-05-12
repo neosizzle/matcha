@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-	import { user as glob_user } from "../../../../stores/globalStore.svelte"
 	import { Gender, type User } from "../../../../types/user";
-    import { calculate_age_from_date, deserialize_user_object } from "../../../../utils/globalFunctions.svelte";
+    import { calculate_age_from_date, desc_unix_ts, deserialize_user_object } from "../../../../utils/globalFunctions.svelte";
 	import { ToastType } from "../../../../types/toast";
     import { showToast } from "../../../../utils/globalFunctions.svelte";
   	import type { Location } from "../../../../types/location";
@@ -11,11 +10,11 @@
 
 	let user_id = $page.params.id;
 	let curr_location: Location | null = $state(null)
-
+	let user_status: {is_online: boolean, last_online: {num: number, unit: string}} = $state({is_online: false, last_online:  {num: -1, unit: ""}})
 	let local_user: User | null = $state(null); 
 
 	onMount(async () => {
-		// haih... do a quick auth check
+		// get user
 		const payload = {
 				method: 'GET',
 				credentials: "include" as RequestCredentials,
@@ -32,6 +31,17 @@
 		let user_des: User = deserialize_user_object(user_obj)
 
 		local_user = user_des
+
+		// get user last online
+		response = await fetch(`http://localhost:3000/users/last_active/${user_id}`, payload);
+		if (response.status == 401)
+			window.location.href = "/"
+
+		const last_online_unix = await response.json();
+		err_msg = user_data['detail']
+		if (err_msg)
+			return showToast(err_msg, ToastType.ERROR)
+		user_status = desc_unix_ts(last_online_unix['data'])
 
 		if (user_des.enable_auto_location)
 		{
@@ -90,6 +100,15 @@
 			<div class="carousel rounded-box carousel-vertical w-[90vw] sm:w-[50vw] md:w-[50vw] lg:w-[25vw] h-96 sm:h-120 mb-3">
 
 				{#if local_user}
+					{#if local_user.images.length == 0}
+						<div class="carousel-item h-full block">
+							<div class="w-full h-full bg-gray-300 flex justify-center items-center">
+								<div class="flex flex-col">
+									<div class="w-50 text-center m-2">Bro has no picture yet 😭</div>
+								</div>
+							</div>
+						</div>
+					{/if}
 					{#each local_user.images as image}
 					<div class="carousel-item h-full w-full bg-cover bg-center" style="background-image: url(http://localhost:3000/{image})">
 
@@ -101,6 +120,17 @@
 		</div>
 
 	</div>
+
+	<!--Last online-->
+	{#if !user_status.is_online && user_status.last_online.num != -1}
+		<p class="mb-3 pl-3">Offline: Last online {user_status.last_online.num} {user_status.last_online.unit} ago</p>
+		{:else if user_status.is_online}
+			<p class="mb-3 pl-3">Online </p>
+		{:else}
+			<p class="mb-3 pl-3">Offline </p>
+	{/if}
+
+	
 
 	<!-- Bio -->
 	<div class="card bg-base-100 card-sm shadow-md mb-3">

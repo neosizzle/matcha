@@ -6,7 +6,6 @@ const bcrypt = require("bcryptjs");
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 
-// TODO add verified and image check when using matching module
 // TODO await session.close(); after every new session (recommended)
 // Database init code
 const init_fn = async () => {
@@ -741,12 +740,13 @@ exports.like_user = async function ({
     const liked_user_q = await session.run(`
         MATCH (a:User {id: $liker}), (b:User {id: $liked})
         CREATE (a)-[:Liked { created_at: datetime() }]->(b)
+        RETURN a as u
     `, {
         liker: user_liker_id,
         liked: user_liked_id
     });
     const liked_user = liked_user_q.records[0].get('u').properties
-    delete matched_user['password']
+    delete liked_user['password']
 
     return { matched: false, user: liked_user };
 }
@@ -809,7 +809,6 @@ exports.unlike_user = async function ({
         unliked: user_unliked_id
     });
 
-    console.log(result.records)
 
     if (result.records.length == 0)
         throw new Error(enums.DbErrors.NOTFOUND);
@@ -999,6 +998,30 @@ exports.search_with_filters = async function ({
         return user_obj
     });
     return users;
+}
+
+exports.check_matched = async function ({
+    user1_id,
+    user2_id
+}) {
+    let session = driver.session();
+
+    const query = `
+        MATCH (a:User)-[r:Matched]-(b:User)
+        WHERE 
+            a.id = $user1_id AND
+            b.id = $user2_id
+        RETURN r
+    `;
+
+    const result = await session.run(query, {
+        user1_id,
+        user2_id
+    })
+
+    if (result.records.length == 0)
+        return false
+    return true
 }
 
 // MATCHING module end

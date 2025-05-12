@@ -2,6 +2,8 @@ const enums = require("../constants/enums")
 const neo4j_calls = require("../neo4j/calls")
 const auth_check_mdw = require("../middleware/authcheck")
 const upload_img_mdw = require("../middleware/fileupload")
+const { createClient } = require('redis');
+const redis_client = createClient();
 
 var express = require('express');
 const { DATE_REGEX } = require("../constants/regex");
@@ -93,6 +95,20 @@ router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
         return res.status(400).send({'detail': "Email already exists"})
       debug(error)
       return res.status(500).send({'detail' : "Internal server error"});
+  }
+});
+
+router.get('/last_active/:id', [auth_check_mdw.checkJWT], async function(req, res, next) {
+  const id = req.params.id
+
+  try {
+    if (!redis_client.isOpen)
+      await redis_client.connect()
+    const last_active_time = await redis_client.get(id);
+    return res.send({'data': last_active_time});
+  } catch (error) {
+    debug(error)
+    return res.status(500).send({'detail' : "Internal server error"}); 
   }
 });
 

@@ -9,6 +9,7 @@ var usersRouter = require('./routes/users');
 var authRouter = require('./routes/auth');
 var geoRouter = require('./routes/geolocation');
 var matchingRouter = require('./routes/matching');
+var chatRouter = require('./routes/chat');
 
 var app = express();
 
@@ -29,6 +30,7 @@ app.use('/users', usersRouter);
 app.use('/auth', authRouter);
 app.use('/geo', geoRouter);
 app.use('/matching', matchingRouter);
+app.use('/chat', chatRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

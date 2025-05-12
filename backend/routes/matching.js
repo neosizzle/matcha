@@ -1,7 +1,7 @@
 const enums = require("../constants/enums")
 const neo4j_calls = require("../neo4j/calls")
 const auth_check_mdw = require("../middleware/authcheck")
-const upload_img_mdw = require("../middleware/fileupload")
+const profile_check_mdw = require("../middleware/interactioncheck")
 
 var express = require('express');
 var router = express.Router();
@@ -96,7 +96,7 @@ router.post('/search', [auth_check_mdw.checkJWT], async function(req, res, next)
 });
 
 // Get user suggestions
-router.post('/suggest', [auth_check_mdw.checkJWT], async function(req, res, next) {
+router.post('/suggest', [auth_check_mdw.checkJWT, profile_check_mdw.checkProfile], async function(req, res, next) {
   const body = req.body;
   const required_fields = ['age_range', 'loc_range', 'fame_range', 'common_tag_range', 'genders']
   const RANGE_ARRAYS = ['age_range', 'fame_range', 'common_tag_range']
@@ -190,7 +190,5 @@ router.post('/suggest', [auth_check_mdw.checkJWT], async function(req, res, next
     return res.status(500).send({'detail' : "Internal server error"});
   }
 });
-
-
 
 module.exports = router;

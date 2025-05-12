@@ -40,3 +40,56 @@ export function deserialize_user_object(user_obj: RawUser): User {
 		tags: user_obj.tags.split(",").filter((x: string) => x !== "")
 	} as User;
 }
+
+// takes a past unix timestamp
+// if unix time stamp is invalid or null, return offline
+// else, parse the timestamp and
+// return an object like this:
+// {'is_online': bool, 'last_online': {'num': number, 'unit': 'Minutes', 'Seconds', 'Days' ...}}
+export function desc_unix_ts(unix_ts: string | null) {
+	if (!unix_ts || isNaN(Number(unix_ts))) {
+		return { is_online: false, last_online: {num: -1, unit: ""} };
+	}
+	
+	const past = Number(unix_ts)
+	const now = Date.now();
+	const diffMs = now - past;
+
+	if (diffMs < 0) {
+		return { is_online: false, last_online: {num: -1, unit: ""} };
+	}
+
+	// Online if last seen within 60 seconds
+	const is_online = diffMs < 60000;
+
+	// Calculate time difference in human-readable format
+	const seconds = Math.floor(diffMs / 1000);
+	const minutes = Math.floor(seconds / 60);
+	const hours = Math.floor(minutes / 60);
+	const days = Math.floor(hours / 24);
+
+	let num: number;
+	let unit: string;
+
+	if (days > 0) {
+		num = days;
+		unit = 'Days';
+	} else if (hours > 0) {
+		num = hours;
+		unit = 'Hours';
+	} else if (minutes > 0) {
+		num = minutes;
+		unit = 'Minutes';
+	} else {
+		num = seconds;
+		unit = 'Seconds';
+	}
+
+	return {
+		is_online,
+		last_online: {
+			num,
+			unit
+		}
+	};
+}
