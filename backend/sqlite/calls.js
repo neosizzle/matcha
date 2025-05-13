@@ -9,12 +9,17 @@ const database = require('better-sqlite3')(dbPath);
 // From business perspective, this creates data isolation as moderation
 // and technical aspects of the entire system are seperated. Principle of Least privellege
 
-// TODO create report table
-
 const initDatabase = `
 CREATE TABLE IF NOT EXISTS chats (
 	from_id TEXT NOT NULL,
 	to_id TEXT NOT NULL,
+	contents TEXT NOT NULL,
+	created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS reports (
+	reporter_id TEXT NOT NULL,
+	reported_id TEXT NOT NULL,
 	contents TEXT NOT NULL,
 	created_at INTEGER NOT NULL
 );
@@ -62,4 +67,16 @@ exports.create_chat = database.prepare(`
 	INSERT INTO chats (from_id, to_id, contents, created_at)
 	VALUES (?, ?, ?, ?)
 	RETURNING from_id, to_id, contents, created_at
+`);
+
+exports.delete_chat_has_id = database.prepare(`
+	DELETE FROM chats 
+	WHERE (from_id = ? AND to_id = ?) 
+	   OR (to_id = ? AND from_id = ?)
+`);
+
+exports.create_report = database.prepare(`
+	INSERT INTO reports (reporter_id, reported_id, contents, created_at)
+	VALUES (?, ?, ?, ?)
+	RETURNING reporter_id, reported_id, contents, created_at
 `);

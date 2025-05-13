@@ -309,8 +309,8 @@
 		let err_msg = body['detail']
 		if (err_msg)
 			return showToast(err_msg, ToastType.ERROR)
-		recent_likes = body['data']['likes']
-		recent_views = body['data']['views']
+		recent_likes = body['data']['likes'].slice(0, 5);
+		recent_views = body['data']['views'].slice(0, 5);
 
 		// mm yes, we got lat and long from IP, time to update user
 		const payload2 = {

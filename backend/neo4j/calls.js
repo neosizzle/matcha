@@ -579,6 +579,9 @@ exports.get_user = async function ({
     return existing_user
 }
 
+// TODO block and unblock user
+
+
 // USER module end
 
 // MATCHING module start
@@ -593,7 +596,6 @@ exports.get_likes = async function({
     const result = await session.run(`
         MATCH (liker:User)-[:Liked]->(liked:User {id: $id})
         RETURN liker
-        LIMIT 5
     `, { id });
     
     const users = result.records.map(record => {
@@ -615,7 +617,6 @@ exports.get_matches = async function({
     const result = await session.run(`
         MATCH (matcher:User)-[:Matched]->(matched:User {id: $id})
         RETURN matcher
-        LIMIT 5
     `, { id });
     
     const users = result.records.map(record => {
@@ -638,7 +639,6 @@ exports.get_views = async function({
         MATCH (viewer:User)-[r:Viewed]->(viewed:User {id: $id})
         RETURN viewer
         ORDER BY r.updated_at DESC
-        LIMIT 5
     `, { id });
     
     const users = result.records.map(record => {
@@ -950,6 +950,9 @@ exports.search_with_filters = async function ({
             u.id <> $user_id
 
         OPTIONAL MATCH (currentUser:User {id: $user_id})-[r:Liked|Matched|Blocked]->(u)
+        WHERE r IS NULL
+
+        OPTIONAL MATCH (u)-[r:Blocked]->(currentUser:User {id: $user_id})
         WHERE r IS NULL
 
          WITH u,

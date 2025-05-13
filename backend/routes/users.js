@@ -1,5 +1,6 @@
 const enums = require("../constants/enums")
 const neo4j_calls = require("../neo4j/calls")
+const sqlite_calls = require("../sqlite/calls")
 const auth_check_mdw = require("../middleware/authcheck")
 const upload_img_mdw = require("../middleware/fileupload")
 const { createClient } = require('redis');
@@ -97,6 +98,23 @@ router.put('/me', [auth_check_mdw.checkJWT], async function(req, res, next) {
       return res.status(500).send({'detail' : "Internal server error"});
   }
 });
+
+router.post('/report', [auth_check_mdw.checkJWT], async function(req, res, next) {
+  const body = req.body;
+  const required_fields = ['user_id', 'contents']
+
+  if (!required_fields.every(key => key in body))
+    return res.status(400).send({'detail': `fields ${required_fields} are required`})
+
+  try {
+    await sqlite_calls.create_report.get(req.user.id, body['user_id'], body['contents'], Date.now())
+    return res.status(200).send({'data' : {}});
+  } catch (error) {
+    debug(error)
+    return res.status(500).send({'detail' : "Internal server error"});
+  }
+});
+
 
 router.get('/last_active/:id', [auth_check_mdw.checkJWT], async function(req, res, next) {
   const id = req.params.id
