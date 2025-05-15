@@ -26,8 +26,22 @@ services:
       - redis-data:/data
     restart: unless-stopped
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-server
+    ports:
+      - 5672:5672       # RabbitMQ main communication port
+      - 15672:15672     # RabbitMQ management UI
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    restart: unless-stopped
+
 volumes:
   neo4j-data:
   neo4j-logs:
   neo4j-import:
   redis-data:
+  rabbitmq-data:

@@ -183,6 +183,16 @@ const handle_ws = async (socket, io) => {
             detail: "users not matched"
           });
 
+        // check if there is any blocks 
+        const is_blocked = await neo4j_calls.check_blocks({
+          user_id1: user.id,
+          user_id2: to_user_id
+        })
+        if (is_blocked)
+          return ack({
+            detail: "blocked"
+          });
+
         const added_chat = sqlite_calls.create_chat.get(user.id, to_user_id, contents, created_at)
         const opp_socketid = uid_sockid_map.get(to_user_id)
 
@@ -208,6 +218,7 @@ const handle_ws = async (socket, io) => {
         });
       }
     });
+
     // Handle message from the client
     socket.on('message', async (msg) => {
       socket.emit('message', msg); // Send message back to the sender

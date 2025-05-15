@@ -8,6 +8,7 @@
     "seed": "node ./bin/seed"
   },
   "dependencies": {
+    "amqplib": "^0.10.8",
     "bcryptjs": "^3.0.2",
     "better-sqlite3": "^11.10.0",
     "cookie-parser": "~1.4.4",

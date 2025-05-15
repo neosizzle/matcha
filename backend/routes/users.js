@@ -115,6 +115,94 @@ router.post('/report', [auth_check_mdw.checkJWT], async function(req, res, next)
   }
 });
 
+router.post('/block', [auth_check_mdw.checkJWT], async function(req, res, next) {
+  const body = req.body;
+  const required_fields = ['user_id']
+
+  if (!required_fields.every(key => key in body))
+    return res.status(400).send({'detail': `fields ${required_fields} are required`})
+
+  try {
+    // add block relationship in neo4j
+    await neo4j_calls.block_user({
+      user_blocker_id: req.user.id,
+      user_blocked_id: body['user_id']
+    })
+
+    // remove chats in sql
+    sqlite_calls.delete_chat_has_id.run(req.user.id, body['user_id'], req.user.id, body['user_id'])
+    return res.status(200).send({'data' : {}});
+
+  } catch (error) {
+    if (error.message == enums.DbErrors.NOTFOUND)
+      return res.status(404).send({'detail': "user not found"})
+    if (error.message == enums.DbErrors.EXISTS)
+      return res.status(400).send({'detail': "already exists"})
+    if (error.message == enums.DbErrors.UNAUTHORIZED)
+      return res.status(400).send({'detail': "unauthorized"})
+    debug(error)
+    return res.status(500).send({'detail' : "Internal server error"});
+  }
+});
+
+router.post('/unblock', [auth_check_mdw.checkJWT], async function(req, res, next) {
+  const body = req.body;
+  const required_fields = ['user_id']
+
+  if (!required_fields.every(key => key in body))
+    return res.status(400).send({'detail': `fields ${required_fields} are required`})
+
+  try {
+      // add block relationship in neo4j
+      await neo4j_calls.unblock_user({
+        user_unblocker_id: req.user.id,
+        user_unblocked_id: body['user_id']
+      })
+
+      return res.status(200).send({'data' : {}});
+
+  } catch (error) {
+    if (error.message == enums.DbErrors.NOTFOUND)
+      return res.status(404).send({'detail': "user not found"})
+    if (error.message == enums.DbErrors.EXISTS)
+      return res.status(400).send({'detail': "already exists"})
+    if (error.message == enums.DbErrors.UNAUTHORIZED)
+      return res.status(400).send({'detail': "unauthorized"})
+    debug(error)
+    return res.status(500).send({'detail' : "Internal server error"});
+  }
+});
+
+router.post('/unmatch', [auth_check_mdw.checkJWT], async function(req, res, next) {
+  const body = req.body;
+  const required_fields = ['user_id']
+
+  if (!required_fields.every(key => key in body))
+    return res.status(400).send({'detail': `fields ${required_fields} are required`})
+
+  try {
+      // remove match relationship in neo4j
+      await neo4j_calls.unmatch_user({
+        user_unmatcher_id: req.user.id,
+        user_unmatched_id: body['user_id']
+      })
+  
+      // remove chats in sql
+      sqlite_calls.delete_chat_has_id.run(req.user.id, body['user_id'], req.user.id, body['user_id'])
+
+      return res.status(200).send({'data' : {}});
+
+    } catch (error) {
+    if (error.message == enums.DbErrors.NOTFOUND)
+      return res.status(404).send({'detail': "user not found"})
+    if (error.message == enums.DbErrors.EXISTS)
+      return res.status(400).send({'detail': "already exists"})
+    if (error.message == enums.DbErrors.UNAUTHORIZED)
+      return res.status(400).send({'detail': "unauthorized"})
+    debug(error)
+    return res.status(500).send({'detail' : "Internal server error"});
+  }
+});
 
 router.get('/last_active/:id', [auth_check_mdw.checkJWT], async function(req, res, next) {
   const id = req.params.id

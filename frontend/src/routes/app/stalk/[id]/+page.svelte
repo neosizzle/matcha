@@ -12,6 +12,29 @@
 	let curr_location: Location | null = $state(null)
 	let user_status: {is_online: boolean, last_online: {num: number, unit: string}} = $state({is_online: false, last_online:  {num: -1, unit: ""}})
 	let local_user: User | null = $state(null); 
+	let report_text = $state(""); 
+
+
+	async function submit_report() {
+		const payload = {
+			method: 'POST',
+			credentials: "include" as RequestCredentials,
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				user_id,
+				contents: report_text
+			}),
+		}
+		let fetch_res = await fetch('http://localhost:3000/users/report', payload)
+		let data = await fetch_res.json()
+		let err_msg = data['detail']
+		if (err_msg)
+			return showToast(err_msg, ToastType.ERROR)
+		showToast("User reported", ToastType.SUCCESS)
+
+	}
 
 	onMount(async () => {
 		// get user
@@ -172,4 +195,33 @@
 		</div>
 	</div>
 
+	<!-- Open the modal using ID.showModal() method -->
+	<button
+	class="btn btn-error w-full"
+	onclick={() => {
+		const modal = document.getElementById('report_modal') as HTMLDialogElement | null;
+		modal?.showModal();
+	}}
+	>
+	Report user
+	</button>
+
+	<dialog id="report_modal" class="modal">
+	<div class="modal-box">
+		<h3 class="font-bold text-lg mb-3">Report user</h3>
+		<textarea bind:value={report_text} class="textarea w-full resize-none" placeholder="Describe the report"></textarea>
+
+		<div class="modal-action">
+			<form method="dialog" onsubmit={submit_report}>
+				<button class="btn btn-error">Submit</button>
+			</form>
+		</div>
+	</div>
+
+
+	<form method="dialog" class="modal-backdrop">
+		<button>hidden close btn lol</button>
+	</form>
+		
+	</dialog>
 </div>

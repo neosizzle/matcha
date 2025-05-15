@@ -579,9 +579,6 @@ exports.get_user = async function ({
     return existing_user
 }
 
-// TODO block and unblock user
-
-
 // USER module end
 
 // MATCHING module start
@@ -647,6 +644,59 @@ exports.get_views = async function({
         return user_node.properties;
     });
     return users
+}
+
+exports.get_blocks = async function({
+    id
+}) {
+    let session = driver.session();
+    let existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+    
+    const result = await session.run(`
+        MATCH (blocker:User)-[r:Blocked]->(blocked:User {id: $id})
+        RETURN blocker
+    `, { id });
+    
+    const users = result.records.map(record => {
+        const user_node = record.get('blocker');
+        delete user_node.properties['password']
+        return user_node.properties;
+    });
+    return users
+}
+
+exports.check_blocks = async function({
+    user_id1,
+    user_id2
+}) {
+    let session = driver.session();
+    let existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_id1 })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_id2 })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+    
+    let result = await session.run(`
+        MATCH (blocker:User {id: $user_id1})-[r:Blocked]->(blocked:User {id: $user_id2})
+        RETURN blocker
+    `, { user_id1, user_id2 });
+
+    if (result.records.length > 0)
+        return true
+
+    result = await session.run(`
+        MATCH (blocker:User {id: $user_id2})-[r:Blocked]->(blocked:User {id: $user_id1})
+        RETURN blocker
+    `, { user_id1, user_id2 });
+
+    if (result.records.length > 0)
+        return true
+    
+    return false
 }
 
 exports.like_user = async function ({
@@ -852,7 +902,7 @@ exports.block_user = async function({
         { user_blocker_id, user_blocked_id }
     );
 
-    // If user_blocker has 'Liked' relationship woth user_blocked, remove it
+    // If user_blocker has 'Liked' relationship with user_blocked, remove it
     await session.run(
         `
         MATCH (a:User {id: $user_blocker_id})-[r:Liked]->(b:User {id: $user_blocked_id})
@@ -869,6 +919,38 @@ exports.block_user = async function({
         `,
         { user_blocker_id, user_blocked_id }
     );
+}
+
+exports.unblock_user = async function ({
+    user_unblocker_id,
+    user_unblocked_id
+}) {
+    let session = driver.session();
+    let existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_unblocker_id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_unblocked_id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    // you cannot unblock yourself..
+    if (user_unblocked_id == user_unblocker_id)
+        throw new Error(enums.DbErrors.UNAUTHORIZED);
+
+    // if the user did not block user2 the first place, throw notfound error, or just delete implicitly
+    let result = await session.run(`
+        MATCH (a:User {id: $unliker})-[r:Blocked]->(b:User {id: $unliked})
+        DELETE r
+        RETURN r
+    `, {
+        unliker: user_unblocker_id,
+        unliked: user_unblocked_id
+    });
+
+    if (result.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
 }
 
 exports.unmatch_user = async function({
