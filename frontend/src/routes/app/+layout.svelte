@@ -1,5 +1,3 @@
-
-
 <script lang="ts">
     import Button from "../../components/Button.svelte";
     import { ToastType } from "../../types/toast";
