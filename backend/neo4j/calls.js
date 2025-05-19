@@ -1116,3 +1116,35 @@ exports.check_matched = async function ({
 }
 
 // MATCHING module end
+
+// Location module start
+exports.get_nearest_users = async function (location_auto_lon, location_auto_lat) {
+    let session = driver.session();
+    
+    try {
+        const query = `
+        MATCH (u:User)
+        WHERE exists(u.location_auto_lon) AND exists(u.location_auto_lat)
+        WITH u, point({ longitude: $location_auto_lon, latitude: $location_auto_lat }) AS input_location
+        ORDER BY distance(input_location, point({ longitude: u.location_auto_lon, latitude: u.location_auto_lat }))
+        RETURN u.userId AS userId, u.location_auto_lon AS location_auto_lon, u.location_auto_lat AS location_auto_lat
+        LIMIT 25`;
+
+        const result = await session.run(query, { location_auto_lon, location_auto_lat });
+        
+        let users = result.records.map(record => ({
+            userId: record.get('userId'),
+            location_auto_lon: record.get('location_auto_lon'),
+            location_auto_lat: record.get('location_auto_lat')
+        }));
+
+        return JSON.stringify(users);
+    } catch (error) {
+        console.error("Error retrieving nearest users:", error);
+        throw error;
+    } finally {
+        await session.close();
+    }
+};
+
+// Location module end
