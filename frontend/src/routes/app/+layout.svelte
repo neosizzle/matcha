@@ -1,5 +1,3 @@
-
-
 <script lang="ts">
     import { onMount } from "svelte";
     import { notification_pool, ws_client } from "../../stores/globalStore.svelte";
