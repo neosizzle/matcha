@@ -8,6 +8,7 @@ const redis_client = createClient();
 
 var express = require('express');
 const { DATE_REGEX } = require("../constants/regex");
+const { recv_all_from_queue } = require("../rabbitmq/calls")
 var router = express.Router();
 var debug = require('debug')('backend:router:users');
 
@@ -201,6 +202,32 @@ router.post('/unmatch', [auth_check_mdw.checkJWT], async function(req, res, next
       return res.status(400).send({'detail': "unauthorized"})
     debug(error)
     return res.status(500).send({'detail' : "Internal server error"});
+  }
+});
+
+router.get('/pending_notifications_peek', [auth_check_mdw.checkJWT], async function(req, res, next) {
+  const id = req.user.id
+  const filter = req.query['filter']
+
+  try {
+    const messages = await recv_all_from_queue(id, false, filter)
+    return res.send({'data': messages});
+  } catch (error) {
+    debug(error)
+    return res.status(500).send({'detail' : "Internal server error"}); 
+  }
+});
+
+router.get('/pending_notifications_consume', [auth_check_mdw.checkJWT], async function(req, res, next) {
+  const id = req.user.id
+  const filter = req.query['filter']
+
+  try {
+    const messages = await recv_all_from_queue(id, true, filter)
+    return res.send({'data': messages});
+  } catch (error) {
+    debug(error)
+    return res.status(500).send({'detail' : "Internal server error"}); 
   }
 });
 

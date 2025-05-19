@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 	import { Gender, type User } from "../../../../types/user";
-    import { calculate_age_from_date, desc_unix_ts, deserialize_user_object } from "../../../../utils/globalFunctions.svelte";
+    import { calculate_age_from_date, connect_ws, desc_unix_ts, deserialize_user_object } from "../../../../utils/globalFunctions.svelte";
 	import { ToastType } from "../../../../types/toast";
     import { showToast } from "../../../../utils/globalFunctions.svelte";
   	import type { Location } from "../../../../types/location";
 	import { page } from '$app/stores';
+    import { ws_client } from "../../../../stores/globalStore.svelte";
+    import type { Socket } from "socket.io-client";
+    import type { ClientToServerEvents, ServerToClientEvents } from "../../../../types/ws";
 
 
 	let user_id = $page.params.id;
@@ -13,6 +16,9 @@
 	let user_status: {is_online: boolean, last_online: {num: number, unit: string}} = $state({is_online: false, last_online:  {num: -1, unit: ""}})
 	let local_user: User | null = $state(null); 
 	let report_text = $state(""); 
+
+	let local_ws: Socket<ServerToClientEvents, ClientToServerEvents> | null = null
+	ws_client.subscribe(e => local_ws = e)
 
 
 	async function submit_report() {
@@ -72,6 +78,26 @@
 			let body = await response.json();
 			curr_location = body['data'] as Location
 		}
+
+		// I am going to create ws here
+		if ($ws_client == null)
+		{
+			const new_ws_client = connect_ws();
+			ws_client.set(new_ws_client)
+			
+			const response = await new_ws_client.emitWithAck("emit_view", JSON.stringify({user_id: user_des.id}))
+			let err_msg = response['detail']
+			if (err_msg)
+				return showToast(err_msg, ToastType.ERROR)
+		}
+		else {
+			// can deref null here
+			const response = await local_ws?.emitWithAck("emit_view", JSON.stringify({user_id: user_des.id}))
+			let err_msg = response['detail']
+			if (err_msg)
+				return showToast(err_msg, ToastType.ERROR)
+		}
+
 })
 
 </script>

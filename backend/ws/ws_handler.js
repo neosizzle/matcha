@@ -5,6 +5,7 @@ const neo4j_calls = require("../neo4j/calls")
 const sqlite_calls = require("../sqlite/calls")
 const enums = require("../constants/enums")
 const { createClient } = require('redis');
+const { send_to_queue } = require("../rabbitmq/calls");
 const redis_client = createClient();
 
 const PING_FREQUENCY_MS = 5000
@@ -68,6 +69,12 @@ const handle_ws = async (socket, io) => {
         else if (opp_socketid)
           io.to(opp_socketid).emit('notify_like', {'data': user})
 
+        // store notification if opp_socketid is not in map
+        if (!opp_socketid && like_result.matched)
+          send_to_queue(user_liked_id, {type: 'notify_match', 'data': user})
+        else if (!opp_socketid)
+          send_to_queue(user_liked_id, {type: 'notify_like', 'data': user})
+
         // send ack back to caller
         ack({
           data: like_result
@@ -104,6 +111,10 @@ const handle_ws = async (socket, io) => {
         // send notification to other user
         const opp_socketid = uid_sockid_map.get(user_viewed_id)
         io.to(opp_socketid).emit('notify_view', {'data': user})
+
+        // store notif if user is not connected to ws
+        if (!opp_socketid)
+          send_to_queue(user_viewed_id, {type: 'notify_view', 'data': user})
 
 
         // send ack back to caller
@@ -200,6 +211,10 @@ const handle_ws = async (socket, io) => {
           user: user,
           contents
         }})
+
+        // store notification if opp_socketid is not in map
+        if (!opp_socketid)
+          send_to_queue(to_user_id, {type: 'notify_chat', 'data': {user, contents}})
 
         // send ack back to caller
         ack({

@@ -3,7 +3,7 @@
 	import { onMount } from "svelte";
 	import { user as glob_user } from "../../../stores/globalStore.svelte"
 	import { Gender, type User } from "../../../types/user";
-    import { calculate_age_from_date, deserialize_user_object } from "../../../utils/globalFunctions.svelte";
+    import { calculate_age_from_date, deserialize_user_object, get_user_rest, update_user_loction_auto } from "../../../utils/globalFunctions.svelte";
 	import { ToastType } from "../../../types/toast";
     import { showToast } from "../../../utils/globalFunctions.svelte";
     import { goto } from "$app/navigation";
@@ -261,19 +261,9 @@
 	}
 
 	onMount(async () => {
-		// haih... do a quick auth check
-		const payload = {
-				method: 'GET',
-				credentials: "include" as RequestCredentials,
-			}
-		let response = await fetch("http://localhost:3000/users/me", payload);
-		if (response.status == 401)
-			window.location.href = "/"
-
-		// I dont like this, too many things can go wrong.. oh well womp womp
-		const user_data = await response.json();
-		let user_obj = user_data['data']
-		let user_des: User = deserialize_user_object(user_obj)
+		let user_des = await get_user_rest()
+		if (!user_des)
+			return window.location.href = "/"
 
 		// set global store if OK and store is empty (refresh)
 		if (!local_user)
@@ -290,7 +280,11 @@
 		// 	console.log('message: ' + msg)
 		// });
 
-		response = await fetch("http://localhost:3000/geo/ip", payload);
+		const payload = {
+			method: 'GET',
+			credentials: "include" as RequestCredentials,
+		}
+		let response = await fetch("http://localhost:3000/geo/ip", payload);
 		let body = await response.json();
 		curr_location = body['data'] as Location
 		
@@ -313,37 +307,10 @@
 		recent_views = body['data']['views'].slice(0, 5);
 
 		// mm yes, we got lat and long from IP, time to update user
-		const payload2 = {
-			method: 'PUT',
-			credentials: "include" as RequestCredentials,
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				images: user_des.images.join(","),
-				tags: user_des.tags.join(","),
-				sexuality: user_des.sexuality,
-				displayname: user_des.displayname,
-				bio: user_des.bio,
-				enable_auto_location: user_des.enable_auto_location,
-				gender: user_des.gender,
-				email: user_des.email,
-				location_manual: user_des.location_manual,
-				location_manual_lat: user_des.location_manual_lat,
-				location_manual_lon: user_des.location_manual_lon,
-				location_auto_lat: curr_location.latitude,
-				location_auto_lon: curr_location.longitude,
-				birthday: user_des.birthday.toISOString().split('T')[0]
-			}),
-		}
-		let fetch_res = await fetch('http://localhost:3000/users/me', payload2)
-		let data = await fetch_res.json()
-		err_msg = data['detail']
-		if (err_msg)
-			return showToast(err_msg, ToastType.ERROR)
-		user_obj = data['data']
-		user_des = deserialize_user_object(user_obj)
-		glob_user.update(() => user_des)
+		let [new_user, loc_err] = await update_user_loction_auto(curr_location, user_des)
+		if (loc_err)
+			return showToast(loc_err, ToastType.ERROR)
+		glob_user.update(() => new_user)
   	})
 
 </script>

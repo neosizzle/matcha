@@ -10,7 +10,8 @@ exports.checkProfile = async (req, res, next) => {
 	}
   
 	try {
-		const user_images = user.images.split(",")
+		const user_images = user.images.split(",").filter((x) => x !== "")
+		console.log(user.images)
 		if (user_images.length == 0)
 			return res.status(400).json({ 'detail' : 'Profile is not complete' });
 		if (!user.iden_42 && !user.verified)

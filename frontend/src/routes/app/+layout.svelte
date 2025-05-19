@@ -1,12 +1,26 @@
 
 
 <script lang="ts">
-    import Button from "../../components/Button.svelte";
+    import { onMount } from "svelte";
+    import { notification_pool, ws_client } from "../../stores/globalStore.svelte";
     import { ToastType } from "../../types/toast";
-    import { showToast } from "../../utils/globalFunctions.svelte";
+    import { connect_ws, peek_not_w_filter, showToast } from "../../utils/globalFunctions.svelte";
+    import type { NotificationObj } from "../../types/ws";
 
 	let { children } = $props();
-	
+	let local_noti_pool: NotificationObj[] = $state([]);
+	notification_pool.subscribe(e => local_noti_pool = e)
+
+	let matches_noti_num = $derived.by(() => {
+		let res = local_noti_pool.filter(e => e.type == "notify_chat" || e.type == "notify_match")
+		return res.length
+	})
+
+	let profile_noti_num = $derived.by(() => {
+		let res = local_noti_pool.filter(e => e.type == "notify_like" || e.type == "notify_view")
+		return res.length
+	})
+
 	async function logout() {
 		const payload = {
 			method: 'POST',
@@ -21,6 +35,32 @@
 		let err_msg = (await fetch_res.json())['detail']
 		showToast(err_msg, ToastType.ERROR)
 	}
+
+	onMount(async () => {
+		// I am going to create ws here
+		if ($ws_client == null)
+		{
+			const new_ws_client = connect_ws();
+			ws_client.set(new_ws_client)
+		}
+
+		// get pending notifications without consuming
+		try {
+			let pending_notifs = await peek_not_w_filter()
+			notification_pool.update((e) => [...e, ...pending_notifs])
+		} catch (error: unknown) {
+			let errorMessage = 'An unexpected error occurred';
+
+			if (error instanceof Error) {
+				errorMessage = error.message;
+			}
+
+			showToast(errorMessage, ToastType.ERROR);
+		}
+	})
+
+	
+
 
 </script>
 
@@ -59,14 +99,19 @@
 				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
 				</svg>
-				<span class="absolute -top-1 -right-1 inline-block w-3 h-3 bg-red-500 rounded-full"></span>
+				{#if matches_noti_num > 0}
+					<span class="absolute -top-1 -right-1 inline-block w-3 h-3 bg-red-500 rounded-full"></span>
+				{/if}
 			</a>
 		</div>
 		<div class="relative flex justify-center items-center">
 			<a class="relative" href="/app/profile" aria-label="profile">
 				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-				</svg>			  
+				</svg>		
+				{#if profile_noti_num > 0}
+					<span class="absolute -top-1 -right-1 inline-block w-3 h-3 bg-red-500 rounded-full"></span>
+				{/if}
 			</a>
 		</div>
 

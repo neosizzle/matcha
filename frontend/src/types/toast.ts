@@ -2,6 +2,7 @@ export enum ToastType {
     INFO,
     ERROR,
 	SUCCESS,
+	HAPPY,
 }
 
 export interface ToastElement {

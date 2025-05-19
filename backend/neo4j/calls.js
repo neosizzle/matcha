@@ -1029,13 +1029,19 @@ exports.search_with_filters = async function ({
             ) AND
             u.gender IN $genders AND
             size(u.images) >= 1 AND
-            u.id <> $user_id
-
-        OPTIONAL MATCH (currentUser:User {id: $user_id})-[r:Liked|Matched|Blocked]->(u)
-        WHERE r IS NULL
-
-        OPTIONAL MATCH (u)-[r:Blocked]->(currentUser:User {id: $user_id})
-        WHERE r IS NULL
+            u.id <> $user_id AND
+            NOT EXISTS {
+                MATCH (:User {id: $user_id})-[:Liked]->(u)
+            } AND
+            NOT EXISTS {
+                MATCH (:User {id: $user_id})-[:Matched]->(u)
+            } AND
+            NOT EXISTS {
+                MATCH (:User {id: $user_id})-[:Blocked]->(u)
+            } AND
+            NOT EXISTS {
+                MATCH (u)-[:Blocked]->(:User {id: $user_id})
+            }
 
          WITH u,
             duration.between(date(u.birthday), date()).years AS age,

@@ -1,15 +1,18 @@
 <script lang="ts">
     import Button from "../../../components/Button.svelte";
 	import { onMount } from "svelte";
-	import { user as glob_user } from "../../../stores/globalStore.svelte"
+	import { user as glob_user, ws_client } from "../../../stores/globalStore.svelte"
 	import { Gender, type User } from "../../../types/user";
-    import { calculate_age_from_date, deserialize_user_object } from "../../../utils/globalFunctions.svelte";
+    import { calculate_age_from_date, connect_ws, deserialize_user_object, get_user_rest, update_user_loction_auto } from "../../../utils/globalFunctions.svelte";
     import type { Location } from "../../../types/location";
 	import { ToastType } from "../../../types/toast";
     import { showToast } from "../../../utils/globalFunctions.svelte";
     import UserSearchSkeleton from "../../../components/UserSearchSkeleton.svelte";
     import { goto } from "$app/navigation";
     import UserBrowseSkeleton from "../../../components/UserBrowseSkeleton.svelte";
+    import type { ClientToServerEvents, ServerToClientEvents } from "../../../types/ws";
+    import type { Socket } from "socket.io-client";
+    import ToastList from "../../../components/ToastList.svelte";
 
 	let curr_mode = $state(1)
 	let sort_keys = [
@@ -43,6 +46,9 @@
 		if (e)
 			local_user = e
 	})
+
+	let local_ws: Socket<ServerToClientEvents, ClientToServerEvents> | null = null
+	ws_client.subscribe(e => local_ws = e)
 
 	function get_gender_key_by_val(genders: {name: string, value: string}[], selected_genders: string[]) {
 		let res = "";
@@ -190,6 +196,30 @@
 		curr_auto_location_name = loc.name
 	}
 
+	async function handle_like() {
+		if (!local_ws)
+			return showToast("Ws not available", ToastType.ERROR)
+
+		const response = await local_ws.emitWithAck("emit_like", JSON.stringify({user_id: browse_users[0].id}))
+		let err_msg = response['detail']
+		if (err_msg)
+		{
+			browse_users.shift()
+			return showToast(err_msg, ToastType.ERROR)
+		}
+		let body = response['data']
+		if (body['matched'])
+			showToast(`You have matched with ${body['user']['displayname']}`, ToastType.HAPPY)
+		else
+			showToast(`like ${body['user']['displayname']} OK`, ToastType.SUCCESS)
+
+		browse_users.shift()
+	}
+
+	function handle_skip() {
+		browse_users.shift()
+	}
+
 	$effect(() => {
 		if (browse_users.length > 0) {
     		set_auto_location_from_coords(browse_users[0].location_manual_lat, browse_users[0].location_manual_lon);
@@ -198,36 +228,19 @@
 
 
 	onMount(async () => {
-		// haih... do a quick auth check
-		const payload = {
-				method: 'GET',
-				credentials: "include" as RequestCredentials,
-			}
-		let response = await fetch("http://localhost:3000/users/me", payload);
-		if (response.status == 401)
-			window.location.href = "/"
-
-		// I dont like this, too many things can go wrong.. oh well womp womp
-		const user_data = await response.json();
-		let user_obj = user_data['data']
-		let user_des: User = deserialize_user_object(user_obj)
+		let user_des = await get_user_rest()
+		if (!user_des)
+			return window.location.href = "/"
 
 		// set global store if OK and store is empty (refresh)
 		if (!local_user)
 			glob_user.update(() => user_des)
 
-		
-		// NOTE: ws should be in own useeffect. check user -> check ws -> connect ws
-		// TEST WS
-		// const ws_conn_options = {
-		// 	withCredentials: true
-		// }
-		// const socket = io("http://localhost:3000", ws_conn_options);
-		// socket.on("message", (msg) => {
-		// 	console.log('message: ' + msg)
-		// });
-
-		response = await fetch("http://localhost:3000/geo/ip", payload);
+		const payload = {
+			method: 'GET',
+			credentials: "include" as RequestCredentials,
+		}
+		let response = await fetch("http://localhost:3000/geo/ip", payload);
 		let body = await response.json();
 		let curr_location: Location = body['data']
 		
@@ -241,38 +254,18 @@
 			// geolocation unavail, do nothing as we already have IP location
 		}
 
-		// mm yes, we got lat and long from IP, time to update user
-		const payload2 = {
-			method: 'PUT',
-			credentials: "include" as RequestCredentials,
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				images: user_des.images.join(","),
-				tags: user_des.tags.join(","),
-				sexuality: user_des.sexuality,
-				displayname: user_des.displayname,
-				bio: user_des.bio,
-				enable_auto_location: user_des.enable_auto_location,
-				gender: user_des.gender,
-				email: user_des.email,
-				location_manual: user_des.location_manual,
-				location_manual_lat: user_des.location_manual_lat,
-				location_manual_lon: user_des.location_manual_lon,
-				location_auto_lat: curr_location.latitude,
-				location_auto_lon: curr_location.longitude,
-				birthday: user_des.birthday.toISOString().split('T')[0]
-			}),
+		// I am going to create ws here
+		if ($ws_client == null)
+		{
+			const new_ws_client = connect_ws();
+			ws_client.set(new_ws_client)
 		}
-		let fetch_res = await fetch('http://localhost:3000/users/me', payload2)
-		let data = await fetch_res.json()
-		let err_msg = data['detail']
-		if (err_msg)
-			return showToast(err_msg, ToastType.ERROR)
-		user_obj = data['data']
-		user_des = deserialize_user_object(user_obj)
-		glob_user.update(() => user_des)
+
+		// mm yes, we got lat and long from IP, time to update user
+		let [new_user, loc_err] = await update_user_loction_auto(curr_location, user_des)
+		if (loc_err)
+			return showToast(loc_err, ToastType.ERROR)
+		glob_user.update(() => new_user)
 
 		// populate initial data
 		await fetch_users()
@@ -609,9 +602,7 @@
 						<!--Action-->
 						<div class="flex justify-between px-3 mb-3">
 							<button
-							onclick={() => {
-								browse_users.shift()
-							}}
+							onclick={handle_skip}
 							aria-label="skip"
 							class="flex justify-center items-center rounded-full h-15 w-15 bg-red-500"
 							>
@@ -622,10 +613,8 @@
 							</button>
 
 							<button
-							onclick={() => {
-								browse_users.shift()
-							}}
-							aria-label="skip"
+							onclick={handle_like}
+							aria-label="like"
 							class="flex justify-center items-center rounded-full h-15 w-15 bg-pink-500"
 							>
 							<svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" stroke-width="3" stroke="white" class="size-8">
