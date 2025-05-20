@@ -207,10 +207,12 @@ router.post('/unmatch', [auth_check_mdw.checkJWT], async function(req, res, next
 
 router.get('/pending_notifications_peek', [auth_check_mdw.checkJWT], async function(req, res, next) {
   const id = req.user.id
-  const filter = req.query['filter']
+  let filters = req.query['filters']
+  if (filters)
+    filters = filters.split(",")
 
   try {
-    const messages = await recv_all_from_queue(id, false, filter)
+    const messages = await recv_all_from_queue(id, false, filters)
     return res.send({'data': messages});
   } catch (error) {
     debug(error)
@@ -220,10 +222,12 @@ router.get('/pending_notifications_peek', [auth_check_mdw.checkJWT], async funct
 
 router.get('/pending_notifications_consume', [auth_check_mdw.checkJWT], async function(req, res, next) {
   const id = req.user.id
-  const filter = req.query['filter']
+  let filters = req.query['filters']
+  if (filters)
+    filters = filters.split(",")
 
   try {
-    const messages = await recv_all_from_queue(id, true, filter)
+    const messages = await recv_all_from_queue(id, true, filters)
     return res.send({'data': messages});
   } catch (error) {
     debug(error)

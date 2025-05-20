@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import { notification_pool, ws_client } from "../../stores/globalStore.svelte";
     import { ToastType } from "../../types/toast";
-    import { connect_ws, peek_not_w_filter, showToast } from "../../utils/globalFunctions.svelte";
+    import { connect_ws, not_w_filter, showToast } from "../../utils/globalFunctions.svelte";
     import type { NotificationObj } from "../../types/ws";
 
 	let { children } = $props();
@@ -44,7 +44,7 @@
 
 		// get pending notifications without consuming
 		try {
-			let pending_notifs = await peek_not_w_filter()
+			let pending_notifs = await not_w_filter()
 			notification_pool.update((e) => [...e, ...pending_notifs])
 		} catch (error: unknown) {
 			let errorMessage = 'An unexpected error occurred';

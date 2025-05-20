@@ -32,24 +32,23 @@ exports.send_to_queue = async (queue_name, msg) => {
 	await new Promise(res => setTimeout(res, 10)); // 10ms delay
 }
 
-// TODO: notification type match consumer
-exports.recv_all_from_queue = async (queue_name, is_consume, filter) => {
+exports.recv_all_from_queue = async (queue_name, is_consume, filters) => {
 	const [_, channel] = await get_conn_channel(true)
 	await channel.assertQueue(queue_name, { durable: false });
 	let messages = []
 	await channel.consume(queue_name, (msg) => {
 		if (msg && msg.content)
-		{
-			const msg_json = JSON.parse(msg.content.toString())
-			
-			if (!filter)
 			{
-				messages.push(msg_json)
-				if (is_consume)
-					channel.ack(msg)
-			}
-			else if (msg_json['type'] == filter)
-			{
+				const msg_json = JSON.parse(msg.content.toString())
+				
+				if (!filters)
+				{
+					messages.push(msg_json)
+					if (is_consume)
+						channel.ack(msg)
+				}
+				else if (filters.includes(msg_json['type']))
+				{
 				messages.push(msg_json)
 				if (is_consume)
 					channel.ack(msg)

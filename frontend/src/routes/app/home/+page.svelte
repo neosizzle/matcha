@@ -37,7 +37,7 @@
 	let fame_range = [0, 100]
 	let common_tag_range = [0, 100]
 	let loc_range = $state(10)
-	let save_changes_disabled = $state(false)
+	let save_changes_disabled = $state(true)
 	let browse_users: User[] = $state([])
 	let search_users: User[] = $state([])
 
@@ -139,7 +139,7 @@
 		}
 		let browse_users_unsorted_ser = data['data']
 		let browse_users_unsorted_deser: User[] = []
-		search_users_ser.forEach((ser: {[key: string]: any}) => {
+		browse_users_unsorted_ser.forEach((ser: {[key: string]: any}) => {
 			browse_users_unsorted_deser.push(deserialize_user_object(ser))	
 		});
 		let browse_users_unsorted: User[] = browse_users_unsorted_deser

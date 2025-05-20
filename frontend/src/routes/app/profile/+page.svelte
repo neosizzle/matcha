@@ -1,15 +1,15 @@
 <script lang="ts">
     import Button from "../../../components/Button.svelte";
-	import { onMount } from "svelte";
-	import { user as glob_user } from "../../../stores/globalStore.svelte"
+	import { onDestroy, onMount } from "svelte";
+	import { user as glob_user, notification_pool } from "../../../stores/globalStore.svelte"
 	import { Gender, type User } from "../../../types/user";
-    import { calculate_age_from_date, deserialize_user_object, get_user_rest, update_user_loction_auto } from "../../../utils/globalFunctions.svelte";
+    import { calculate_age_from_date, deserialize_user_object, get_user_rest, not_w_filter, update_user_loction_auto } from "../../../utils/globalFunctions.svelte";
 	import { ToastType } from "../../../types/toast";
     import { showToast } from "../../../utils/globalFunctions.svelte";
     import { goto } from "$app/navigation";
 	import CITIES from '../../../places.json' assert { type: 'json' };
   	import type { Location } from "../../../types/location";
-	import io from "socket.io-client"; // Import Socket.IO client
+    import type { NotificationObj } from "../../../types/ws";
 
 	let curr_location: Location | null = $state(null)
 	let tags_copy: string[] = $state([])
@@ -61,6 +61,11 @@
 			}
 		}
 	})
+
+	let local_noti_pool: NotificationObj[] = $state([]);
+	notification_pool.subscribe(e => local_noti_pool = e)
+
+	// TODO make likes and views live in profile, dynamic filter form local_notipool
 
 	async function logout() {
 		logout_diabled = true
@@ -269,17 +274,6 @@
 		if (!local_user)
 			glob_user.update(() => user_des)
 
-		
-		// NOTE: ws should be in own useeffect. check user -> check ws -> connect ws
-		// TEST WS
-		// const ws_conn_options = {
-		// 	withCredentials: true
-		// }
-		// const socket = io("http://localhost:3000", ws_conn_options);
-		// socket.on("message", (msg) => {
-		// 	console.log('message: ' + msg)
-		// });
-
 		const payload = {
 			method: 'GET',
 			credentials: "include" as RequestCredentials,
@@ -312,6 +306,21 @@
 			return showToast(loc_err, ToastType.ERROR)
 		glob_user.update(() => new_user)
   	})
+
+	// on destroy, delete all profile related notifications
+	// in pool and consume persistent notifications
+	onDestroy(async () => {
+		notification_pool.update(e => {
+			let res = e.filter(x => x.type != "notify_like" && x.type != "notify_view")
+			return res
+		})
+
+		try {
+			await not_w_filter("notify_like,notify_view", true)
+		} catch (error) {
+			console.log(error)
+		}		
+	})
 
 </script>
 

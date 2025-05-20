@@ -213,14 +213,15 @@ export async function update_user_loction_auto(location: Location, user_des: Use
 }
 
 // get pending notifications but dont consume them
-export async function peek_not_w_filter(filter?: string) {
+export async function not_w_filter(filters?: string, consume?: boolean) {
 	let res = []
 
 	const payload = {
 		method: 'GET',
 		credentials: "include" as RequestCredentials,
 	}
-	let response = await fetch(`http://localhost:3000/users/pending_notifications_peek${filter? `?filter=${filter}` : ''}`, payload);
+	let action_str = consume ? 'consume' : 'peek'
+	let response = await fetch(`http://localhost:3000/users/pending_notifications_${action_str}${filters? `?filters=${filters}` : ''}`, payload);
 	let data = await response.json()
 	if (data['detail'])
 		throw new Error(data['detail']);
