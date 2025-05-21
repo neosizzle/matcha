@@ -174,6 +174,20 @@ router.post('/unblock', [auth_check_mdw.checkJWT], async function(req, res, next
   }
 });
 
+router.get('/blocks', [auth_check_mdw.checkJWT], async function(req, res, next) {
+  try {
+    const id = req.user.id
+    const blocks = await neo4j_calls.get_blocks({id})
+    res.send({'data': blocks});
+
+  } catch (error) {
+    if (error.message == enums.DbErrors.NOTFOUND)
+      return res.status(404).send({'detail': "user not found"})
+    debug(error)
+    return res.status(500).send({'detail' : "Internal server error"});
+  }
+});
+
 router.post('/unmatch', [auth_check_mdw.checkJWT], async function(req, res, next) {
   const body = req.body;
   const required_fields = ['user_id']

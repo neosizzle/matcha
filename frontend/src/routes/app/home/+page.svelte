@@ -463,12 +463,11 @@
 		<UserSearchSkeleton/>
 		{:else}
 			{#if search_users.length == 0}
-				<div class="h-[80vh] flex justify-center items-center">
+				<div class="h-[100vh] flex justify-center items-center">
 					<div>
-						<img alt="not found" class="block" src="/snow-mountain-svgrepo-com.svg"/>
-						<div class="text-center">
+						<h1 class="text-center">
 							No users
-						</div>
+						</h1>
 
 					</div>
 				</div>
@@ -506,12 +505,11 @@
 			<UserBrowseSkeleton/>
 		{:else}
 			{#if browse_users.length == 0}
-				<div class="h-[80vh] flex justify-center items-center">
+				<div class="h-[100vh] flex justify-center items-center">
 					<div>
-						<img alt="not found" class="block" src="/snow-mountain-svgrepo-com.svg"/>
-						<div class="text-center">
+						<h1 class="text-center">
 							No users
-						</div>
+						</h1>
 
 					</div>
 				</div>

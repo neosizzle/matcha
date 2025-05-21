@@ -603,6 +603,27 @@ exports.get_likes = async function({
     return users
 }
 
+exports.get_likes_by_me = async function({
+    id
+}) {
+    let session = driver.session();
+    let existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+    
+    const result = await session.run(`
+        MATCH (liker:User {id: $id})-[:Liked]->(liked:User)
+        RETURN liked
+    `, { id });
+    
+    const users = result.records.map(record => {
+        const user_node = record.get('liked');
+        delete user_node.properties['password']
+        return user_node.properties;
+    });
+    return users
+}
+
 exports.get_matches = async function({
     id
 }) {

@@ -28,6 +28,36 @@ router.get('/likes_matches_views', [auth_check_mdw.checkJWT], async function(req
   }
 });
 
+// Get matches for user
+router.get('/matches', [auth_check_mdw.checkJWT], async function(req, res, next) {
+  try {
+    const id = req.user.id
+    const matches = await neo4j_calls.get_matches({id})
+    res.send({'data': matches});
+
+  } catch (error) {
+    if (error.message == enums.DbErrors.NOTFOUND)
+      return res.status(404).send({'detail': "user not found"})
+    debug(error)
+    return res.status(500).send({'detail' : "Internal server error"});
+  }
+});
+
+// Gets the users this current user had liked
+router.get('/likes_by_me', [auth_check_mdw.checkJWT], async function(req, res, next) {
+  try {
+    const id = req.user.id
+    const liked = await neo4j_calls.get_likes_by_me({id})
+    res.send({'data': liked});
+
+  } catch (error) {
+    if (error.message == enums.DbErrors.NOTFOUND)
+      return res.status(404).send({'detail': "user not found"})
+    debug(error)
+    return res.status(500).send({'detail' : "Internal server error"});
+  }
+});
+
 // Search for user based on criteria
 router.post('/search', [auth_check_mdw.checkJWT], async function(req, res, next) {
   const body = req.body;
