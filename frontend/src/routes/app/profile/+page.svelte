@@ -64,8 +64,16 @@
 
 	let local_noti_pool: NotificationObj[] = $state([]);
 	notification_pool.subscribe(e => local_noti_pool = e)
-
-	// TODO make likes and views live in profile, dynamic filter form local_notipool
+	let live_views = $derived.by(() => {
+		let inter = local_noti_pool.filter(e => e.type == "notify_view")
+		let res = inter.map((e) => deserialize_user_object(JSON.parse(JSON.stringify(e.data))))
+		return res
+	})
+	let live_likes = $derived.by(() => {
+		let inter = local_noti_pool.filter(e => e.type == "notify_like")
+		let res = inter.map((e) => deserialize_user_object(JSON.parse(JSON.stringify(e.data))))
+		return res
+	})
 
 	async function logout() {
 		logout_diabled = true
@@ -500,7 +508,7 @@
 			<div class="card-body">
 				<h2 class="card-title">Recent Views</h2>
 
-				{#each recent_views as view}
+				{#each  [...new Map([...recent_views, ...live_views].map(x => [x.id, x])).values()] as view}
 					<div class="flex items-center">
 						<div class="avatar">
 							<div class="w-10 rounded-full mr-5">
@@ -541,8 +549,8 @@
 			<div class="card-body">
 			  <h2 class="card-title">Recent Likes</h2>
 
-			  {#each recent_likes as like}
-					<div class="flex items-center">
+			  {#each  [...new Map([...recent_likes, ...live_likes].map(x => [x.id, x])).values()] as like}
+			  <div class="flex items-center">
 						<div class="avatar">
 							<div class="w-10 rounded-full mr-5">
 								<img alt='profile' src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
