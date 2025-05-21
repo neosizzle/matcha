@@ -34,11 +34,11 @@
 		return promise()
 	})
 
-	// on destroy, delete all profile related notifications
+	// on destroy, delete all match related notifications
 	// in pool and consume persistent notifications
 	onDestroy(async () => {
 		notification_pool.update(e => {
-			let res = e.filter(x => x.type != "notify_like" && x.type != "notify_view")
+			let res = e.filter(x => x.type != "notify_match")
 			return res
 		})
 
