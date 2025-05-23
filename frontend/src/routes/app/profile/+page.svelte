@@ -512,7 +512,7 @@
 					<div class="flex items-center">
 						<div class="avatar">
 							<div class="w-10 rounded-full mr-5">
-								<img alt='profile' src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
+								<img alt='profile' src={`http://localhost:3000/${view.images[0]}`} />
 							</div>
 						</div>
 
@@ -553,7 +553,7 @@
 			  <div class="flex items-center">
 						<div class="avatar">
 							<div class="w-10 rounded-full mr-5">
-								<img alt='profile' src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
+								<img alt='profile' src={`http://localhost:3000/${like.images[0]}`} />
 							</div>
 						</div>
 
