@@ -119,7 +119,7 @@
 						</button>
 
 						<div class="text-lg mr-1">
-							{user.displayname} {user.images}
+							{user.displayname}
 						</div>
 
 						{#if user.gender == Gender.FEMALE}

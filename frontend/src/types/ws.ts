@@ -7,6 +7,7 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
 	emit_like: (event: string, data: string) => string
 	emit_view: (event: string, data: string) => string
+	emit_unlike: (event: string, data: string) => string
 }
 
 interface MessageNotification { 
