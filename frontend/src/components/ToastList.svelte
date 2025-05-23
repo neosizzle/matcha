@@ -19,7 +19,7 @@ $: {
 </script>
 
 
-<div class="sticky px-10 left-0 top-[20px] z-10 w-full">
+<div class="fixed px-10 top-[20px] z-10 w-full sm:w-md">
 	{#each localToastList as toast, index (toast.id)}
 		<div class="animate-jump-in animate-duration-[400ms]">
 			<div class="

@@ -164,15 +164,15 @@ export async function get_user_rest() {
 		method: 'GET',
 		credentials: "include" as RequestCredentials,
 	}
-	let response = await fetch("http://localhost:3000/users/me", payload);
+	const response = await fetch("http://localhost:3000/users/me", payload);
 	if (response.status == 401)
 		return null
 
 	
 	// I dont like this, too many things can go wrong.. oh well womp womp
 	const user_data = await response.json();
-	let user_obj = user_data['data']
-	let user_des: User = deserialize_user_object(user_obj)
+	const user_obj = user_data['data']
+	const user_des: User = deserialize_user_object(user_obj)
 
 	return user_des
 }
@@ -202,27 +202,27 @@ export async function update_user_loction_auto(location: Location, user_des: Use
 		}),
 	}
 
-	let fetch_res = await fetch('http://localhost:3000/users/me', payload2)
-	let data = await fetch_res.json()
-	let err_msg = data['detail']
+	const fetch_res = await fetch('http://localhost:3000/users/me', payload2)
+	const data = await fetch_res.json()
+	const err_msg = data['detail']
 	if (err_msg)
 		return [undefined, err_msg]
-	let user_obj = data['data']
+	const user_obj = data['data']
 	user_des = deserialize_user_object(user_obj)
 	return [user_des, undefined]
 }
 
 // get pending notifications but dont consume them
 export async function not_w_filter(filters?: string, consume?: boolean) {
-	let res = []
+	const res = []
 
 	const payload = {
 		method: 'GET',
 		credentials: "include" as RequestCredentials,
 	}
-	let action_str = consume ? 'consume' : 'peek'
-	let response = await fetch(`http://localhost:3000/users/pending_notifications_${action_str}${filters? `?filters=${filters}` : ''}`, payload);
-	let data = await response.json()
+	const action_str = consume ? 'consume' : 'peek'
+	const response = await fetch(`http://localhost:3000/users/pending_notifications_${action_str}${filters? `?filters=${filters}` : ''}`, payload);
+	const data = await response.json()
 	if (data['detail'])
 		throw new Error(data['detail']);
 	for (let i = 0; i < data['data'].length; i++) {

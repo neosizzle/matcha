@@ -1,38 +1,83 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  	import { onDestroy, onMount } from "svelte";
 	import UserSearchSkeleton from "../../../components/UserSearchSkeleton.svelte";
-	import { notification_pool } from "../../../stores/globalStore.svelte";
+	import { notification_pool, user } from "../../../stores/globalStore.svelte";
 	import { ToastType } from "../../../types/toast";
 	import type { NotificationObj } from "../../../types/ws";
 	import { deserialize_user_object, not_w_filter, showToast } from "../../../utils/globalFunctions.svelte";
-    import { Gender } from "../../../types/user";
+	import { Gender, type User } from "../../../types/user";
+  	import { goto } from "$app/navigation";
 
 	let local_noti_pool: NotificationObj[] = $state([]);
 	notification_pool.subscribe(e => local_noti_pool = e)
+	let removed_user_ids: string[] = $state([])
+	
+	// JUNHAN: please dont mind the tomfoolery here, experimenting with new things..
+	// TODO; make it so when other user block you, also remove from here.. lazy lah
+	let matches_from_rest: User[] | null = $state(null)
+
+	async function fetch_matches_rest() {
+		const payload = {
+			method: 'GET',
+			credentials: "include" as RequestCredentials,
+		}
+		const response = await fetch("http://localhost:3000/matching/matches", payload);
+		const body = await response.json();
+		const err_msg = body['detail']
+		if (err_msg)
+		{
+			showToast(err_msg, ToastType.ERROR)
+			return []
+		}
+		return body['data'].map((e: {}) => deserialize_user_object(e))
+	}
+
+	onMount(async () => {
+		matches_from_rest = await fetch_matches_rest();
+	})
 
 	let matched_users = $derived.by(() => {
-		async function promise() {
-			const payload = {
-				method: 'GET',
-				credentials: "include" as RequestCredentials,
-			}
-			const response = await fetch("http://localhost:3000/matching/matches", payload);
-			const body = await response.json();
-			const err_msg = body['detail']
-			if (err_msg)
-			{
-				showToast(err_msg, ToastType.ERROR)
-				return []
-			}
-			const matches_from_rest = body['data']
+
+		async function promise(removed_user_ids: string[], local_noti_pool: NotificationObj[], matches_from_rest: User[] | null) {
+
+			// bro... even chatgpt cant understand this..
+			// never let me cook again
+			let rest_matches = matches_from_rest
+			if (rest_matches == null)
+				rest_matches = await fetch_matches_rest()
+
+
 			const inter = local_noti_pool.filter(e => e.type == "notify_match")
 			const matches_from_ws = inter.map((e) => deserialize_user_object(JSON.parse(JSON.stringify(e.data))))
-			const res = [...new Map([...matches_from_rest, ...matches_from_ws].map(x => [x.id, x])).values()] 
+			let res = [...new Map([...rest_matches as User[], ...matches_from_ws].map(x => [x.id, x])).values()] 
+			
+			// filter for unmatched or blocked 
+			res = res.filter(e => !removed_user_ids.find((f) => e.id == f ))
 			return res;
 		}
 
-		return promise()
+		return promise(removed_user_ids, local_noti_pool, matches_from_rest)
 	})
+
+	async function action_to_user(user_id: string, action: string) {
+		const payload = {
+			method: 'POST',
+			credentials: "include" as RequestCredentials,
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				user_id,
+			}),
+		}
+		let fetch_res = await fetch(`http://localhost:3000/users/${action}`, payload)
+		let data = await fetch_res.json()
+		let err_msg = data['detail']
+		if (err_msg)
+			return showToast(err_msg, ToastType.ERROR)
+		showToast(`User ${action}ed`, ToastType.SUCCESS)
+		removed_user_ids = [...removed_user_ids, user_id]
+	}
 
 	// on destroy, delete all match related notifications
 	// in pool and consume persistent notifications
@@ -51,11 +96,11 @@
 
 </script>
 
-<div>
+<div class="mt-3">
 	{#await matched_users}
 		<UserSearchSkeleton/>
 	{:then items}
-		<div class="min-h-screen">
+		<div class="min-h-[90vh]">
 			{#if items.length == 0}
 				<div class="flex justify-center items-center">
 					<h1 class="text-center">
@@ -67,14 +112,14 @@
 					<!--View, block chat unmatch-->
 					{#each items as user (user.id)}
 					<div class="flex items-center shadow-sm px-2 py-3 mb-3 rounded">
-						<button class="avatar cursor-pointer">
+						<button class="avatar cursor-pointer" onclick={() => {goto(`/app/stalk/${user.id}`)}}>
 							<div class="w-10 rounded-full mr-5">
-								<img alt='profile' src={`http://localhost:3000/${user.images.split(",")[0]}`} />
+								<img alt='profile' src={`http://localhost:3000/${user.images[0]}`} />
 							</div>
 						</button>
 
 						<div class="text-lg mr-1">
-							{user.displayname}
+							{user.displayname} {user.images}
 						</div>
 
 						{#if user.gender == Gender.FEMALE}
@@ -104,9 +149,9 @@
 								  </svg>								  
 							</div>
 							<ul class="dropdown-content menu bg-white rounded-box z-1 w-20 p-2 shadow-sm">
-							  <li class="mb-2 cursor-pointer">Chat</li>
-							  <li class="mb-2 cursor-pointer">Block</li>
-							  <li class="mb-2 cursor-pointer">Unmatch</li>
+							  <button onclick={() => goto(`/app/matches/chat/${user.id}`)} class="mb-2 cursor-pointer hover:bg-gray-100 rounded-sm py-2">Chat</button>
+							  <button onclick={() => action_to_user(user.id, 'block')} class="mb-2 cursor-pointer hover:bg-gray-100 rounded-sm py-2">Block</button>
+							  <button onclick={() => action_to_user(user.id, 'unmatch')} class="mb-2 cursor-pointer hover:bg-gray-100 rounded-sm py-2">Unmatch</button>
 							</ul>
 						</div>
 				

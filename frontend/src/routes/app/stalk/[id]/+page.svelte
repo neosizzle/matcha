@@ -102,7 +102,7 @@
 
 </script>
 
-<div>
+<div class="min-h-[95vh]">
 
 	<!--Main header-->
 	<div class="flex justify-center w-full">
@@ -146,7 +146,7 @@
 			</div>
 
 			<!--Image carousel-->
-			<div class="carousel rounded-box carousel-vertical w-[90vw] sm:w-[50vw] md:w-[50vw] lg:w-[25vw] h-96 sm:h-120 mb-3">
+			<div class="carousel rounded-box carousel-vertical w-[90vw] sm:w-[50vw] md:w-[50vw] lg:w-[25vw] xl:w-[15vw] h-96 sm:h-120 mb-3">
 
 				{#if local_user}
 					{#if local_user.images.length == 0}

@@ -209,9 +209,9 @@
 		}
 		let body = response['data']
 		if (body['matched'])
-			showToast(`You have matched with ${body['user']['displayname']}`, ToastType.HAPPY)
+			showToast(`You have matched with ${browse_users[0].displayname}`, ToastType.HAPPY)
 		else
-			showToast(`like ${body['user']['displayname']} OK`, ToastType.SUCCESS)
+			showToast(`like ${browse_users[0].displayname} OK`, ToastType.SUCCESS)
 
 		browse_users.shift()
 	}
@@ -454,11 +454,8 @@
 
 	<!--Search-->
 	<div
-	class={` ${curr_mode == 1? 'hidden' : ''}`}
+	class={`${curr_mode == 1? 'hidden' : ''} min-h-[88vh]`}
 	>
-	<!-- <div>
-		{search_users.length}
-	</div> -->
 	{#if save_changes_disabled}
 		<UserSearchSkeleton/>
 		{:else}
@@ -499,7 +496,7 @@
 
 	<!--Browse-->
 	<div
-	class={` ${curr_mode == 0? 'hidden' : ''}`}
+	class={`${curr_mode == 0? 'hidden' : ''} min-h-[88vh]`}
 	>
 		{#if save_changes_disabled}
 			<UserBrowseSkeleton/>
@@ -557,7 +554,7 @@
 								</div>
 
 								<!--Image carousel-->
-								<div class="carousel rounded-box carousel-vertical w-[90vw] sm:w-[50vw] md:w-[50vw] lg:w-[25vw] h-96 sm:h-120 mb-3">
+								<div class="carousel rounded-box carousel-vertical w-[90vw] sm:w-[50vw] md:w-[50vw] lg:w-[25vw] xl:w-[15vw] h-96 sm:h-120 mb-3">
 									{#each browse_users[0].images as image}
 										<div class="carousel-item h-full w-full bg-cover bg-center" style="background-image: url(http://localhost:3000/{image})">
 

@@ -1,5 +1,6 @@
 const { DbErrors } = require("../constants/enums");
 const neo4j_calls = require("../neo4j/calls")
+const enums = require("../constants/enums")
 var debug = require('debug')('middleware:intercheck');
 
 exports.checkProfile = async (req, res, next) => {
@@ -30,7 +31,7 @@ exports.checkProfileWs = async (user_id) => {
 		if (user_images.length == 0)
 			throw new Error(enums.DbErrors.NOTFOUND);
 		if (!user.iden_42 && !user.verified)
-			return res.status(400).json({ 'detail' : 'Email is not verified' });
+			throw new Error(enums.DbErrors.UNAUTHORIZED);
 	} catch (error) {
 		throw error;
 	}

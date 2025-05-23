@@ -376,7 +376,7 @@
 			</div>
 
 			<!--Image carousel-->
-			<div class="carousel rounded-box carousel-vertical w-[90vw] sm:w-[50vw] md:w-[50vw] lg:w-[25vw] h-96 sm:h-120 mb-3">
+			<div class="carousel rounded-box carousel-vertical w-[90vw] sm:w-[50vw] md:w-[50vw] lg:w-[25vw] xl:w-[15vw] h-96 sm:h-120 mb-3">
 
 				{#if local_user}
 					{#each local_user.images as image}
