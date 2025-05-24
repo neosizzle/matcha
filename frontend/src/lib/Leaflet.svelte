@@ -4,6 +4,8 @@
     import L from 'leaflet';
 	import 'leaflet/dist/leaflet.css';
     import './leaflet.css'; // Import our custom CSS overrides
+    
+    const dispatch = createEventDispatcher();
 
     // Fix Leaflet's icon paths for webpack
     L.Icon.Default.mergeOptions({
@@ -62,6 +64,8 @@
 			// Force a redraw after initialization
 			setTimeout(() => {
 				map?.invalidateSize();
+				// Dispatch an event to notify that the map is fully initialized
+				dispatch('mapInitialized', { map });
 			}, 100);
 			
 		} catch (error) {

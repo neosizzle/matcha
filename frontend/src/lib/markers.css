@@ -1,0 +1,29 @@
+/* Custom Marker Styles */
+.custom-map-marker {
+  background: transparent;
+  border: none;
+}
+
+.custom-map-marker div {
+  display: block !important;
+}
+
+/* Make sure marker icons always appear above the map */
+.leaflet-marker-icon {
+  z-index: 1000 !important;
+}
+
+/* Fix for marker pane to be above other map elements */
+.leaflet-marker-pane {
+  z-index: 600 !important;
+}
+
+/* Animation for markers */
+@keyframes marker-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.marker-bounce {
+  animation: marker-bounce 1s ease infinite;
+}
