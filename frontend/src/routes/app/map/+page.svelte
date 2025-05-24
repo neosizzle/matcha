@@ -9,6 +9,8 @@
 
     // variables
     let curr_location: Location | null = $state(null);
+    let self_marker: LatLngExpression | null = $state(null);
+    let markersReady = $state(false); // New flag to track when all markers are ready
     const payload = {
         method: 'GET',
         credentials: "include" as RequestCredentials,
@@ -29,16 +31,43 @@
     onMount(() => {
         // Set a flag when component is mounted
         mapReady = true;
+        
         if ("geolocation" in navigator) {
 			navigator.geolocation.getCurrentPosition(async (position) => {
 				let response = await fetch(`http://localhost:3000/geo/coords?lat=${position.coords.latitude}&lon=${position.coords.longitude}`, payload);
 				let body = await response.json();
-				curr_location = body['data'] as Location
+				curr_location = body['data'] as Location;
                 console.log("Current location from geolocation:", curr_location);
-			});
+                
+                // Set self marker position as soon as we get the location
+                if (curr_location?.latitude && curr_location?.longitude) {
+                    self_marker = [curr_location.latitude, curr_location.longitude] as LatLngExpression;
+                    console.log("Self marker set to:", self_marker);
+                } else {
+                    // If we get a response but no coordinates, use the raw coordinates from browser
+                    self_marker = [position.coords.latitude, position.coords.longitude] as LatLngExpression;
+                    console.log("Self marker set to browser coordinates:", self_marker);
+                }
+                
+                // All markers are now ready (self marker and predefined markers)
+                markersReady = true;
+			}, (error) => {
+                console.error("Geolocation error:", error);
+                // For error case, we'll still show the map but without self marker
+                markersReady = true;
+            });
 		} else {
-			// geolocation unavail, do nothing as we already have IP location
+			console.warn("Geolocation is not available in this browser");
+            // For browsers without geolocation, we'll still show the map but without self marker
+            markersReady = true;
 		}
+    });
+
+    // This effect ensures the map updates when all components are ready
+    $effect(() => {
+        if (markersReady && mapInitialized) {
+            console.log("All markers are ready and map is initialized");
+        }
     });
 </script>
 
@@ -100,13 +129,24 @@
         font-weight: bold;
         font-size: 12px;
     }
+    
+    :global(.background-green) {
+        background: #4CAF50; /* Green color for self marker */
+    }
 </style>
 
 <div class="map-wrapper">
     <h1 class="text-center text-2xl font-bold mb-4">Prey Detector</h1>
-    {#if mapReady}
-        <Leaflet view={initialView} zoom={13} on:mapInitialized={handleMapInitialized}>
+    {#if mapReady && markersReady}
+        <Leaflet view={self_marker || initialView} zoom={13} on:mapInitialized={handleMapInitialized}>
             {#if mapInitialized}
+                {#if self_marker}
+                    <Marker latLng={self_marker} width={32} height={32}>
+                        <div class="custom-marker">
+                            <div class="marker-pin background-green"></div>
+                        </div>
+                    </Marker>
+                {/if}
                 {#each markerLocations as latLng, i}
                     <Marker {latLng} width={32} height={32}>
                         <div class="custom-marker">
@@ -119,7 +159,7 @@
         </Leaflet>
     {:else}
         <div class="flex items-center justify-center h-full">
-            <p>Loading map...</p>
+            <p>Loading map and location data...</p>
         </div>
     {/if}
 </div>
