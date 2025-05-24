@@ -84,7 +84,7 @@
 		{@render children()}
 	</div>
 
-	<div class="sticky bottom-0 left-0 h-15 w-full grid grid-cols-5 gap-0 border-t-1 border-gray-200 bg-white">
+	<div class="sticky bottom-0 left-0 h-15 w-full grid grid-cols-5 gap-0 border-t-1 border-gray-200 bg-white" style="z-index: 900;">
 		<div class="flex justify-center items-center">
 			<a class="relative" href="/app/home" aria-label="home">
 				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">

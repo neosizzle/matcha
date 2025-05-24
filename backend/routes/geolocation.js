@@ -20,11 +20,11 @@ router.get('/ip', [auth_check_mdw.checkJWT], async function(req, res, next) {
 		}
 	
 		const data = await response.json();
-		
+		let location_name = `${data['city']['name']}, ${data['state']? data['state']['name'] + ',': ''} ${data['country']['name']}`;
 		return res.send({ 'data': {
 			longitude: data['location']['longitude'],
 			latitude: data['location']['latitude'],
-			name: `${data['city']['name']}, ${data['state']['name']}, ${data['country']['name']}`
+			name: location_name
 		} });
 	
 	  } catch (error) {

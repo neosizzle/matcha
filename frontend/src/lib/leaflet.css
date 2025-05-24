@@ -1,0 +1,63 @@
+/* Override and ensure Leaflet styles are properly applied */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Ensure controls appear above other elements */
+.leaflet-control-container .leaflet-top,
+.leaflet-control-container .leaflet-bottom {
+  z-index: 1000 !important; /* Higher z-index to ensure visibility */
+  pointer-events: auto; /* Ensure clicks reach the controls */
+}
+
+/* Make the zoom control specifically more visible */
+.leaflet-control-zoom {
+  z-index: 1500 !important;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+  border: 2px solid rgba(0,0,0,0.2);
+}
+
+.leaflet-control-zoom a {
+  background-color: white;
+}
+
+/* Make markers visible */
+.leaflet-marker-icon {
+  display: block !important;
+}
+
+/* Make sure the panes are properly ordered */
+.leaflet-map-pane {
+  z-index: 2 !important;
+}
+
+.leaflet-tile-pane {
+  z-index: 3 !important;
+}
+
+.leaflet-overlay-pane {
+  z-index: 4 !important;
+}
+
+.leaflet-shadow-pane {
+  z-index: 5 !important;
+}
+
+.leaflet-marker-pane {
+  z-index: 6 !important;
+}
+
+.leaflet-tooltip-pane {
+  z-index: 7 !important;
+}
+
+.leaflet-popup-pane {
+  z-index: 8 !important;
+}
+
+/* Make sure controls are above all other panes */
+.leaflet-control-container {
+  z-index: 9 !important;
+}
