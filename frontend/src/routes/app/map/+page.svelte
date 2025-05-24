@@ -5,7 +5,14 @@
 	import Leaflet from '$lib/Leaflet.svelte';
     import { onMount } from 'svelte';
     import Marker from '$lib/Marker.svelte';
+  	import type { Location } from "../../../types/location";
 
+    // variables
+    let curr_location: Location | null = $state(null);
+    const payload = {
+        method: 'GET',
+        credentials: "include" as RequestCredentials,
+    }
     const initialView: LatLngExpression = [3.140853, 101.686855];
     const markerLocations: Array<LatLngExpression> = [
         [3.140853, 101.686855], // Example marker location
@@ -22,6 +29,16 @@
     onMount(() => {
         // Set a flag when component is mounted
         mapReady = true;
+        if ("geolocation" in navigator) {
+			navigator.geolocation.getCurrentPosition(async (position) => {
+				let response = await fetch(`http://localhost:3000/geo/coords?lat=${position.coords.latitude}&lon=${position.coords.longitude}`, payload);
+				let body = await response.json();
+				curr_location = body['data'] as Location
+                console.log("Current location from geolocation:", curr_location);
+			});
+		} else {
+			// geolocation unavail, do nothing as we already have IP location
+		}
     });
 </script>
 
@@ -85,8 +102,8 @@
     }
 </style>
 
-<h1 class="text-center text-2xl font-bold mb-4">Minor Radar</h1>
 <div class="map-wrapper">
+    <h1 class="text-center text-2xl font-bold mb-4">Prey Detector</h1>
     {#if mapReady}
         <Leaflet view={initialView} zoom={13} on:mapInitialized={handleMapInitialized}>
             {#if mapInitialized}
@@ -94,7 +111,7 @@
                     <Marker {latLng} width={32} height={32}>
                         <div class="custom-marker">
                             <div class="marker-pin"></div>
-                            <span class="marker-number">{i+1}</span>
+                            <!-- <span class="marker-number">{i+1}</span> -->
                         </div>
                     </Marker>
                 {/each}
