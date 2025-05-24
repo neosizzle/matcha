@@ -676,12 +676,12 @@ exports.get_blocks = async function({
         throw new Error(enums.DbErrors.NOTFOUND);
     
     const result = await session.run(`
-        MATCH (blocker:User)-[r:Blocked]->(blocked:User {id: $id})
-        RETURN blocker
+        MATCH (blocker:User {id: $id})-[r:Blocked]->(blocked)
+        RETURN blocked
     `, { id });
     
     const users = result.records.map(record => {
-        const user_node = record.get('blocker');
+        const user_node = record.get('blocked');
         delete user_node.properties['password']
         return user_node.properties;
     });

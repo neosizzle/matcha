@@ -11,6 +11,8 @@
 	let local_noti_pool: NotificationObj[] = $state([]);
 	notification_pool.subscribe(e => local_noti_pool = e)
 	let removed_user_ids: string[] = $state([])
+
+	// TODO: show chat previews
 	
 	// JUNHAN: please dont mind the tomfoolery here, experimenting with new things..
 	// TODO; make it so when other user block you, also remove from here.. lazy lah
