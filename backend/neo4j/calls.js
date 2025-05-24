@@ -1146,9 +1146,12 @@ exports.get_nearest_users = async function (location_auto_lon, location_auto_lat
         const query = `
         MATCH (u:User)
         WHERE exists(u.location_auto_lon) AND exists(u.location_auto_lat)
+        AND u.location_auto_lon >= -180 AND u.location_auto_lon <= 180 
+        AND u.location_auto_lat >= -90 AND u.location_auto_lat <= 90
+        AND u.id IS NOT NULL
         WITH u, point({ longitude: $location_auto_lon, latitude: $location_auto_lat }) AS input_location
         ORDER BY distance(input_location, point({ longitude: u.location_auto_lon, latitude: u.location_auto_lat }))
-        RETURN u.userId AS userId, u.location_auto_lon AS location_auto_lon, u.location_auto_lat AS location_auto_lat
+        RETURN u.id AS userId, u.location_auto_lon AS location_auto_lon, u.location_auto_lat AS location_auto_lat
         LIMIT 25`;
 
         const result = await session.run(query, { location_auto_lon, location_auto_lat });

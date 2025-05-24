@@ -69,4 +69,31 @@ router.get('/coords', [auth_check_mdw.checkJWT], async function(req, res, next) 
 
 });
 
+router.get('/nearby', [auth_check_mdw.checkJWT], async function(req, res, next) {
+	const body = req.query;
+	const required_fields = ['lat', 'lon']
+
+  	if (!required_fields.every(key => key in body))
+		return res.status(400).send({'detail': `fields ${required_fields} are required`})
+
+	try {
+		const neo4jCalls = require('../neo4j/calls');
+		const lat = parseFloat(req.query.lat);
+		const lon = parseFloat(req.query.lon);
+		
+		if (isNaN(lat) || isNaN(lon)) {
+			return res.status(400).send({'detail': 'Invalid lat/lon values'});
+		}
+
+		const nearbyUsers = await neo4jCalls.get_nearest_users(lon, lat);
+		return res.send({ 'data': JSON.parse(nearbyUsers) });
+	
+	} catch (error) {
+		debug("Error fetching nearby users:", error);
+		res.status(500).send({
+		  'detail': error.message || 'Error fetching nearby users'
+		});
+	}
+});
+
 module.exports = router;
