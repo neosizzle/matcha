@@ -1,5 +1,3 @@
-import type { User } from "./user";
-
 export interface ServerToClientEvents {
     message: {data: string};
 }
@@ -10,7 +8,7 @@ export interface ClientToServerEvents {
 	emit_unlike: (event: string, data: string) => string
 }
 
-interface MessageNotification { 
+export interface MessageNotification { 
 	user: string;
 	contents: string
 }

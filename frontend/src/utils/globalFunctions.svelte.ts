@@ -135,7 +135,7 @@ export function connect_ws() {
 		notification_pool.update(a => [...a, not_obj]) 
 		
 		// show toast here
-		const not_msg = deserialize_user_object(JSON.parse(JSON.stringify(not_obj.data)));
+		const not_msg = deserialize_user_object(JSON.parse(JSON.stringify(not_obj.data))['user']);
 		showToast(`${not_msg.displayname} has messaged you`, ToastType.HAPPY)
 	})
 
