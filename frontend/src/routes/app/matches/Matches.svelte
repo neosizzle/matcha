@@ -25,7 +25,6 @@
 		local_user = e
 	})
 
-	// TODO test this with multiple users.
 	let latest_chat_previews = $derived.by(() => {
 		let rest_chat_previews = chat_previews
 		let ws_chat_previews = local_noti_pool.filter(e => e.type == "notify_chat")
