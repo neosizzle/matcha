@@ -567,6 +567,30 @@ exports.update_user = async function ({
     return res.records[0].get('u').properties
 }
 
+exports.increm_fame_rating = async function ({
+    user_id
+}) {
+    let session = driver.session();
+    const existing_user_q = await session.run('MATCH (u:User) WHERE u.id = $id RETURN u', { id: user_id })
+    if (existing_user_q.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    const existing_user = existing_user_q.records[0].get('u').properties
+    const new_fr = existing_user.fame_rating + 1;
+    const query = `
+        MATCH (u:User) WHERE u.id  = $user_id
+        SET u.fame_rating = $new_fr
+        RETURN u
+    `;
+    const params = {
+        user_id,
+        new_fr
+    };
+    const res = await session.run(query, params);
+    delete res['password']
+    return res.records[0].get('u').properties
+}
+
 exports.get_user = async function ({
     id
 }) {
@@ -1178,7 +1202,8 @@ exports.create_update_date_with_user = async function ({
     user_id,
     user_id_2,
     datetime,
-    details
+    details,
+    is_update
 }) {
     let session = driver.session();
     let existing_id = await session.run('MATCH (u:User) WHERE u.id = $user_id RETURN u as data', { user_id })
@@ -1200,15 +1225,18 @@ exports.create_update_date_with_user = async function ({
     if (matched_check.records.length === 0)
         throw new Error(enums.DbErrors.UNAUTHORIZED);
 
-    // find if any date has appeared on the same date
-    const existing_date = await session.run('MATCH (u:User {id: $user_id})-[d:Date]->(m) WHERE d.datetime = $datetime RETURN d as data', { datetime, user_id })
-    if (existing_date.records.length != 0)
-        throw new Error(enums.DbErrors.EXISTS);
-
-    // find if any date has appeared on the same date
-    const existing_date2 = await session.run('MATCH (u:User {id : $user_id_2})-[d:Date]->(m) WHERE d.datetime = $datetime RETURN d as data', { datetime, user_id_2 })
-    if (existing_date2.records.length != 0)
-        throw new Error(enums.DbErrors.EXISTS);
+    if (!is_update)
+    {
+        // find if any date has appeared on the same date
+        const existing_date = await session.run('MATCH (u:User {id: $user_id})-[d:Date]->(m) WHERE d.datetime = $datetime RETURN d as data', { datetime, user_id })
+        if (existing_date.records.length != 0)
+            throw new Error(enums.DbErrors.EXISTS);
+    
+        // find if any date has appeared on the same date
+        const existing_date2 = await session.run('MATCH (u:User {id : $user_id_2})-[d:Date]->(m) WHERE d.datetime = $datetime RETURN d as data', { datetime, user_id_2 })
+        if (existing_date2.records.length != 0)
+            throw new Error(enums.DbErrors.EXISTS);
+    }
 
 
     const query = `
@@ -1230,6 +1258,42 @@ exports.create_update_date_with_user = async function ({
     return res
 }
 
+exports.del_date_with_user = async function ({
+    user_id,
+    user_id_2,
+}) {
+    let session = driver.session();
+    let existing_id = await session.run('MATCH (u:User) WHERE u.id = $user_id RETURN u as data', { user_id })
+    if (existing_id.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    existing_id = await session.run('MATCH (u:User) WHERE u.id = $user_id RETURN u as data', { user_id: user_id_2 })
+    if (existing_id.records.length == 0)
+        throw new Error(enums.DbErrors.NOTFOUND);
+
+    // check if the users are matched
+    const matched_check = await session.run(
+        `
+        MATCH (a:User {id: $user_id})-[r:Matched]-(b:User {id: $user_id_2})
+        RETURN r
+        `,
+        { user_id, user_id_2 }
+    );
+    if (matched_check.records.length === 0)
+        throw new Error(enums.DbErrors.UNAUTHORIZED);
+
+
+    const query = `
+        MATCH (a:User {id: $user_id})-[r:Date]-(b:User {id: $user_id_2})
+        DELETE r
+    `;
+    const params = {
+        user_id,
+        user_id_2,
+    };
+    await session.run(query, params);
+}
+
 exports.get_all_dates = async function ({
     user_id,
 }) {
@@ -1242,14 +1306,17 @@ exports.get_all_dates = async function ({
     const existing_dates = await session.run('MATCH (u:User)-[d:Date]->(m: User) WHERE u.id = $user_id RETURN d as date, m as user', { user_id })
     if (existing_dates.records.length  == 0)
         return []
-    console.log(existing_dates.records[1])
-    const date = existing_dates.records[0].get('date').properties
-    const user = existing_dates.records[0].get('user').properties
-    delete user['password']
-    const res = {
-        date,
-        user
-    }
+    
+    let res = existing_dates.records.map((record) => {
+        const date = record.get('date').properties
+        const user = record.get('user').properties
+        delete user['password']
+        return {
+            'date': date,
+            'user': user
+        }
+    })
+
     return res
 }
 // Date module end

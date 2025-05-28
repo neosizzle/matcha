@@ -23,7 +23,7 @@ router.get('/all', [auth_check_mdw.checkJWT], async function(req, res, next) {
 
 router.post('/', [auth_check_mdw.checkJWT], async function(req, res, next) {
 	const body = req.body;
-	const required_fields = ['datetime', 'user_id_2', 'details']
+	const required_fields = ['datetime', 'user_id_2', 'details', 'is_update']
 
 	if (!required_fields.every(key => key in body))
 		return res.status(400).send({'detail': `fields ${required_fields} are required`})
@@ -33,8 +33,32 @@ router.post('/', [auth_check_mdw.checkJWT], async function(req, res, next) {
 		const user_id_2 = req.body['user_id_2']
 		const details = req.body['details']
 		const datetime = req.body['datetime']
-		const data = await neo4j_calls.create_update_date_with_user({user_id, user_id_2, datetime, details})
+		const is_update = req.body['is_update']
+		const data = await neo4j_calls.create_update_date_with_user({user_id, user_id_2, datetime, details, is_update})
+		await neo4j_calls.increm_fame_rating({user_id})
 		return res.send({ 'data': data });
+	
+	  } catch (error) {
+		if (error.message == enums.DbErrors.NOTFOUND)
+			return res.status(404).send({'detail': "user not found"})
+		if (error.message == enums.DbErrors.EXISTS)
+			return res.status(400).send({'detail': "already exists"})
+		if (error.message == enums.DbErrors.UNAUTHORIZED)
+			return res.status(400).send({'detail': "unauthorized"})
+		debug(error)
+		return res.status(500).send({'detail' : "Internal server error"});
+	  }
+
+});
+
+
+router.delete('/:user_id', [auth_check_mdw.checkJWT], async function(req, res, next) {
+	
+	try {
+		const user_id_2 = req.params.user_id
+		const user_id = req.user.id
+		await neo4j_calls.del_date_with_user({user_id, user_id_2})
+		return res.send({ 'data': {} });
 	
 	  } catch (error) {
 		if (error.message == enums.DbErrors.NOTFOUND)
