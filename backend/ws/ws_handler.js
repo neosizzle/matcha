@@ -47,6 +47,131 @@ const handle_ws = async (socket, io) => {
       await redis_client.set(user.id, curr_time)
     })
 
+    // call event
+    socket.on('emit_call', async (msg, ack) => {
+      const body = JSON.parse(msg)
+      const required_fields = ['user_id', 'data']
+
+      if (!required_fields.every(key => key in body))
+        return ack({'detail': `fields ${required_fields} are required`})
+
+      const user_id = body['user_id']
+      const data = body['data']
+      const opp_socketid = uid_sockid_map.get(user_id)
+
+      // if user is not connected, return ack
+      if (!opp_socketid)
+        return ack({
+          detail: "user is offline"
+        });
+
+      io.to(opp_socketid).emit('notify_call', {data: {
+        user,
+        rtc: data
+      }})
+      ack({
+        data: {}
+      });
+    })
+
+    // call answer event
+    socket.on('emit_answer', async (msg, ack) => {
+      const body = JSON.parse(msg)
+      const required_fields = ['user_id', 'data']
+
+      if (!required_fields.every(key => key in body))
+        return ack({'detail': `fields ${required_fields} are required`})
+
+      const user_id = body['user_id']
+      const data = body['data']
+      const opp_socketid = uid_sockid_map.get(user_id)
+
+      // if user is not connected, return ack
+      if (!opp_socketid)
+        return ack({
+          detail: "user is offline"
+        });
+
+      io.to(opp_socketid).emit('notify_answer', {data})
+      ack({
+        data: {}
+      });
+    })
+
+    // call reject event
+    socket.on('emit_reject', async (msg, ack) => {
+    const body = JSON.parse(msg)
+    const required_fields = ['user_id', 'data']
+
+    if (!required_fields.every(key => key in body))
+      return ack({'detail': `fields ${required_fields} are required`})
+
+    const user_id = body['user_id']
+    const data = body['data']
+    const opp_socketid = uid_sockid_map.get(user_id)
+
+    // if user is not connected, return ack
+    if (!opp_socketid)
+      return ack({
+        detail: "user is offline"
+      });
+
+    io.to(opp_socketid).emit('notify_reject', {data})
+    ack({
+      data: {}
+    });
+  })
+
+  // call leave event
+  socket.on('emit_leave', async (msg, ack) => {
+    const body = JSON.parse(msg)
+    const required_fields = ['user_id']
+
+    if (!required_fields.every(key => key in body))
+      return ack({'detail': `fields ${required_fields} are required`})
+
+    const user_id = body['user_id']
+    const opp_socketid = uid_sockid_map.get(user_id)
+
+    // if user is not connected, return ack
+    if (!opp_socketid)
+      return ack({
+        detail: "user is offline"
+      });
+
+    io.to(opp_socketid).emit('notify_leave', {data})
+    
+    ack({
+      data: {}
+    });
+  })
+
+  // rtc ice event
+  socket.on('emit_ice', async (msg, ack) => {
+    const body = JSON.parse(msg)
+    const required_fields = ['user_id', 'data']
+
+    if (!required_fields.every(key => key in body))
+      return ack({'detail': `fields ${required_fields} are required`})
+
+    const user_id = body['user_id']
+    const data = body['data']
+    const opp_socketid = uid_sockid_map.get(user_id)
+
+    // if user is not connected, return ack
+    if (!opp_socketid)
+      return ack({
+        detail: "user is offline"
+      });
+
+    io.to(opp_socketid).emit('notify_ice', {data})
+    
+    ack({
+      data: {}
+    });
+  })
+
+
     // like event 
     socket.on('emit_like', async (msg, ack) => {
       try {
@@ -239,6 +364,18 @@ const handle_ws = async (socket, io) => {
       socket.emit('message', msg); // Send message back to the sender
       // socket.broadcast.emit('message', msg); // Broadcast message to everyone except the sender
     });
+
+    socket.on('offer', (offer) => {
+      socket.broadcast.emit('offer', offer);
+    });
+  
+    socket.on('answer', (answer) => {
+      socket.broadcast.emit('answer', answer);
+    });
+  
+    socket.on('ice-candidate', (candidate) => {
+      socket.broadcast.emit('ice-candidate', candidate);
+    });
   
     // Handle disconnect event
     socket.on('disconnect', () => {
@@ -247,7 +384,7 @@ const handle_ws = async (socket, io) => {
       clearInterval(interval)
       console.log('A user disconnected');
     });
-  };
+};
   
   // Export the handler
   module.exports = handle_ws;

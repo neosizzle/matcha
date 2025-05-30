@@ -1,10 +1,11 @@
 
-import { notification_pool, toasts } from "../stores/globalStore.svelte";
+import { notification_pool, toasts, curr_ringing, curr_in_call, curr_rtc_data, user, curr_caller, curr_ice_data } from "../stores/globalStore.svelte";
 import type { Location } from "../types/location";
 import { ToastType } from "../types/toast";
 import type { User } from "../types/user";
 import io from "socket.io-client"; // Import Socket.IO client
 import type { NotificationObj } from "../types/ws";
+import { get } from "svelte/store";
 
 export function showToast(message: string, type: ToastType) {
 	const id = Date.now();
@@ -102,6 +103,42 @@ export function connect_ws() {
 		withCredentials: true
 	}
 	const socket = io("http://localhost:3000", ws_conn_options);
+
+	socket.on('notify_call', async (msg) => { 
+		const rtc_data = msg['data']['rtc']
+		const caller = deserialize_user_object(msg['data']['user'])
+
+		// if we are in a call, reject
+		if (get(curr_in_call) || get(curr_ringing))
+			return await socket.emitWithAck('emit_reject', JSON.stringify({user_id: caller.id, data: rtc_data}))
+
+		// wait for user to accept
+		curr_rtc_data.update((_) => {return {"rtc": rtc_data, user: caller}})
+		curr_ringing.set(true)
+	})
+
+	socket.on('notify_reject', (msg) => { 
+		curr_ringing.set(false)
+		curr_caller.set(false)
+	})
+
+	socket.on('notify_answer', (msg) => { 
+		const rtc_data = msg['data']
+		curr_rtc_data.update((_) => {return {"rtc": rtc_data, user: null}})
+		curr_ringing.set(false)
+		curr_in_call.set(true)
+	})
+
+	socket.on('notify_leave', (msg) => { 
+		curr_rtc_data.update((_) => {return {"rtc": null, user: null}})
+		curr_ringing.set(false)
+		curr_in_call.set(true)
+	})
+
+	socket.on('notify_ice', (msg) => { 
+		const ice_data = msg['data']
+		curr_ice_data.update((_) => ice_data)
+	})
 
 	socket.on('notify_like', (msg) => {
 		const not_obj = {...msg, time: Date.now(), type: 'notify_like'} as NotificationObj
