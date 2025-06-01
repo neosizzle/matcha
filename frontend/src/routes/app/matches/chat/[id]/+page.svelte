@@ -4,7 +4,7 @@
     import { connect_ws, deserialize_user_object, get_user_rest, unix_time_ago } from "../../../../../utils/globalFunctions.svelte";
 	import { ToastType } from "../../../../../types/toast";
     import { showToast } from "../../../../../utils/globalFunctions.svelte";
-    import { notification_pool, ws_client, user as glob_user } from "../../../../../stores/globalStore.svelte";
+    import { notification_pool, ws_client, user as glob_user, curr_call_remote_user, curr_is_caller, curr_ringing } from "../../../../../stores/globalStore.svelte";
     import type { Socket } from "socket.io-client";
     import type { ClientToServerEvents, MessageNotification, NotificationObj, ServerToClientEvents } from "../../../../../types/ws";
 	import { page } from '$app/stores';
@@ -86,6 +86,12 @@
 		if (!messagesEnd)
 			return
 		messagesEnd?.scrollIntoView({ behavior: 'smooth' });
+	}
+
+	function init_call_to_user(user: User) {
+		curr_call_remote_user.set(user)
+		curr_is_caller.set(true)
+		curr_ringing.set(true)
 	}
 
 	onMount(async () => {
@@ -180,7 +186,7 @@
 			{/if}
 		</div>
 
-		<button class="ml-auto cursor-pointer" aria-label="call">
+		<button onclick={() => init_call_to_user(local_user!)} class="ml-auto cursor-pointer" aria-label="call">
 			<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
 				<path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
 			</svg>			  

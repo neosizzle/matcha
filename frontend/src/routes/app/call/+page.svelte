@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { io, Socket } from 'socket.io-client';
     import type { ClientToServerEvents, ServerToClientEvents } from '../../../types/ws';
-    import { ws_client, user as glob_user, curr_in_call, curr_ringing, curr_rtc_data, curr_caller, curr_ice_data } from '../../../stores/globalStore.svelte';
+    import { ws_client, user as glob_user, curr_in_call, curr_ringing, curr_rtc_data, curr_is_caller, curr_ice_data } from '../../../stores/globalStore.svelte';
     import { createRawSnippet, onMount } from 'svelte';
     import type { User } from '../../../types/user';
     import { connect_ws, deserialize_user_object, get_user_rest, showToast } from '../../../utils/globalFunctions.svelte';
@@ -43,19 +43,40 @@
 	// 	}
 	// });
 
+	function leaveCall() {
+		if ($curr_in_call == false)
+			return
+		if (peerConnection) {
+			// peerConnection.getSenders().forEach(sender => sender.track?.stop());
+			// peerConnection.getReceivers().forEach(receiver => receiver.track?.stop());
+			peerConnection.close();
+			peerConnection = null;
+    	}
+
+		if (remoteVideo?.srcObject) {
+			remoteVideo.srcObject = null;
+		}
+
+	}
+
 	$effect(() => {
 		if ($curr_ice_data == null)
 			return
-		// console.log("adding ice", peerConnection == null)
-		// peerConnection?.addIceCandidate($curr_ice_data)
 		console.log("adding ice to bucket")
 		ice_bucket.push($curr_ice_data)
 	})
 
 	$effect(() => {
-		if (!$curr_rtc_data)
+		if (!$curr_rtc_data && !$curr_in_call)
 			return
 	
+		// // handle leave event 
+		// if (!$curr_in_call)
+		// {
+		// 	curr_in_call.set(false)
+		// 	alert('leave event, exitting..')
+		// 	leaveCall()
+		// }
 		console.log("new rtc_data ", $curr_rtc_data['rtc'])
 
 		if ($curr_rtc_data['rtc'].type == "offer")
@@ -113,8 +134,9 @@
 		let err_msg = res['detail']
 		if (err_msg)
 			return showToast(err_msg, ToastType.ERROR)
-		curr_caller.set(true)
+		curr_is_caller.set(true)
 		curr_ringing.set(true)
+		// todo, set remote user here
 	}
   
 	async function createAnswer(): Promise<void> {
@@ -169,55 +191,6 @@
 		curr_rtc_data.set(null)
 	}
 
-	async function init_rtc_peer() {
-		let localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  
-		if (localVideo) localVideo.srcObject = localStream;
-
-		let peerConnection = new RTCPeerConnection(rtc_config);
-
-		peerConnection.ontrack = (event: RTCTrackEvent) => {			
-			if (remoteVideo)
-			{
-				console.log("adding id ", event.streams)
-				// remoteVideo = {
-				// 	...remoteVideo,
-				// 	srcObject: event.streams[0]
-				// }
-				remoteVideo.srcObject = event.streams[0];
-
-			}
-		};
-
-		peerConnection.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
-			console.log("emmiting ice")
-			if (event.candidate) {
-				let user_id_ice = ""
-				if (user_to_call.length > 0)
-					user_id_ice = user_to_call
-				else
-					user_id_ice = user_calling_from['user_id']
-				local_ws?.emitWithAck('emit_ice', JSON.stringify({
-					'user_id': user_id_ice,
-					'data': event.candidate
-				}));
-			}
-		};
-
-		localStream.getTracks().forEach(track => {
-			peerConnection?.addTrack(track, localStream);
-		});
-
-		return {
-			'stream': localStream,
-			'peer': peerConnection
-		}
-	}
-
-	async function leaveCall() {
-		
-	}
-
 	onMount(async () => {
 		// // init stream and peer
 		// let stream_peer = await init_rtc_peer()
@@ -257,13 +230,14 @@
 	<!-- <button onclick={createOffer}>Call</button> -->
 	
 	<div>
-		in call {$curr_in_call}, ringing {$curr_ringing}, caller? {$curr_caller}
+		in call {$curr_in_call}, ringing {$curr_ringing}, caller? {$curr_is_caller}
 	</div>
 
 	<div>
 		<button class="btn" onclick={createOffer}>Init call</button>
 		<button class="btn" onclick={createAnswer}>Accept call</button>
 		<button class="btn" onclick={rejectCancelCall}>reject call</button>
+		<button class="btn" onclick={leaveCall}>leave call</button>
 
 	</div>
 

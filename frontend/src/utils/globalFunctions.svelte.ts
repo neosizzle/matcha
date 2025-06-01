@@ -1,5 +1,5 @@
 
-import { notification_pool, toasts, curr_ringing, curr_in_call, curr_rtc_data, user, curr_caller, curr_ice_data } from "../stores/globalStore.svelte";
+import { notification_pool, toasts, curr_ringing, curr_in_call, curr_rtc_data, user, curr_is_caller, curr_ice_data, curr_call_remote_user } from "../stores/globalStore.svelte";
 import type { Location } from "../types/location";
 import { ToastType } from "../types/toast";
 import type { User } from "../types/user";
@@ -118,8 +118,16 @@ export function connect_ws() {
 	})
 
 	socket.on('notify_reject', (msg) => { 
+		const modal = document.getElementById('call_modal') as HTMLDialogElement | null;
+		modal?.close();
+		
+		curr_in_call.set(false)
 		curr_ringing.set(false)
-		curr_caller.set(false)
+		curr_rtc_data.set(null)
+		curr_is_caller.set(false)
+		curr_call_remote_user.set(null)
+
+		showToast(`Call rejected`, ToastType.INFO)
 	})
 
 	socket.on('notify_answer', (msg) => { 
@@ -132,7 +140,6 @@ export function connect_ws() {
 	socket.on('notify_leave', (msg) => { 
 		curr_rtc_data.update((_) => {return {"rtc": null, user: null}})
 		curr_ringing.set(false)
-		curr_in_call.set(true)
 	})
 
 	socket.on('notify_ice', (msg) => { 
