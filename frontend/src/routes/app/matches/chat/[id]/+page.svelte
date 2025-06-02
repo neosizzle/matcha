@@ -82,6 +82,26 @@
 		message = ""
 	}
 
+	async function ai_rizz() {
+		if (!local_user)
+			return showToast("local user not available", ToastType.ERROR) 
+
+		const payload = {
+			method: 'GET',
+			credentials: "include" as RequestCredentials,
+		}
+		let response = await fetch(`http://localhost:3000/chat/rizz/${local_user.id}`, payload);
+		if (response.status == 401)
+			window.location.href = "/"
+		let body = await response.json()
+		let err_msg = body['detail']
+		if (err_msg)
+			return showToast(err_msg, ToastType.ERROR)
+		message = body['data']['msg']
+		return showToast("AI RIZZ completed", ToastType.SUCCESS)
+
+	}
+
 	function scrollToBottom() {
 		if (!messagesEnd)
 			return
@@ -247,7 +267,7 @@
 		/>
 		
 		<div class="w-1/4 flex justify-evenly items-center">
-			<button aria-label="send" onclick={() => {}} class="btn btn-circle btn-xs sm:btn-sm">
+			<button aria-label="ai rizz" onclick={ai_rizz} class="btn btn-circle btn-xs sm:btn-sm tooltip"  data-tip="AI RIZZ">
 				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
 					<path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
 				</svg>			  
