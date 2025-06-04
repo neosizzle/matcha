@@ -67,7 +67,6 @@ router.get('/rizz/:id', [auth_check_mdw.checkJWT], async function(req, res, next
 		// 	}
 		// ]
 
-		console.log(chats_processed)
 		const last_n = 10
 		chats_processed = chats_processed.length < last_n ? chats_processed : chats_processed.slice(-last_n);
 		
