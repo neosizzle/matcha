@@ -270,7 +270,8 @@
 				
 				<div>
 					<!-- <p>remote video {remoteVideo? (remoteVideo.srcObject? "SRC yes" : "SRC no") : "no"}</p> -->
-					<video bind:this={remoteVideo} autoplay playsinline muted></video>
+					<!-- svelte-ignore a11y_media_has_caption -->
+					<video bind:this={remoteVideo} autoplay playsinline></video>
 				</div>
 				<div>
 					<button class="btn" onclick={leave_call}>leave call</button>
